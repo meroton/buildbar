@@ -1,0 +1,7 @@
+# Workspace status only needed when pushing container images.
+# Therefore, it is set to only execute during `bazel run`.
+run --workspace_status_command="bash tools/workspace-status.sh"
+
+build --incompatible_strict_action_env
+
+test --test_output=errors

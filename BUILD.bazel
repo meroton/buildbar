@@ -1,0 +1,43 @@
+load("@com_github_bazelbuild_buildtools//buildifier:def.bzl", "buildifier")
+load("@gazelle//:def.bzl", "gazelle")
+
+# gazelle:go_grpc_compilers @rules_go//proto:go_proto,@rules_go//proto:go_grpc_v2
+# gazelle:go_naming_convention_external import
+# gazelle:prefix github.com/meroton/buildbar
+# gazelle:resolve proto build/bazel/remote/execution/v2/remote_execution.proto @com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto
+# gazelle:resolve proto go build/bazel/remote/execution/v2/remote_execution.proto @com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution
+# gazelle:resolve proto go pkg/proto/completedactionlogger/completed_action_logger.proto @com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger
+# gazelle:resolve proto go pkg/proto/configuration/auth/auth.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/auth
+# gazelle:resolve proto go pkg/proto/configuration/blobstore/blobstore.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/blobstore
+# gazelle:resolve proto go pkg/proto/configuration/builder/builder.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/builder
+# gazelle:resolve proto go pkg/proto/configuration/eviction/eviction.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/eviction
+# gazelle:resolve proto go pkg/proto/configuration/global/global.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/global
+# gazelle:resolve proto go pkg/proto/configuration/grpc/grpc.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc
+# gazelle:resolve proto google/bytestream/bytestream.proto @googleapis//google/bytestream:bytestream_proto
+# gazelle:resolve proto google/protobuf/any.proto @protobuf//:any_proto
+# gazelle:resolve proto google/protobuf/duration.proto @protobuf//:duration_proto
+# gazelle:resolve proto google/protobuf/empty.proto @protobuf//:empty_proto
+# gazelle:resolve proto google/protobuf/struct.proto @protobuf//:struct_proto
+# gazelle:resolve proto google/protobuf/timestamp.proto @protobuf//:timestamp_proto
+# gazelle:resolve proto google/rpc/status.proto @googleapis//google/rpc:status_proto
+# gazelle:resolve proto pkg/proto/completedactionlogger/completed_action_logger.proto @com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger:completedactionlogger_proto
+# gazelle:resolve proto pkg/proto/configuration/auth/auth.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/auth:auth_proto
+# gazelle:resolve proto pkg/proto/configuration/blobstore/blobstore.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/blobstore:blobstore_proto
+# gazelle:resolve proto pkg/proto/configuration/builder/builder.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/builder:builder_proto
+# gazelle:resolve proto pkg/proto/configuration/eviction/eviction.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/eviction:eviction_proto
+# gazelle:resolve proto pkg/proto/configuration/global/global.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/global:global_proto
+# gazelle:resolve proto pkg/proto/configuration/grpc/grpc.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc:grpc_proto
+gazelle(
+    name = "gazelle",
+)
+
+buildifier(
+    name = "buildifier",
+)
+
+buildifier(
+    name = "buildifier_fix",
+    exclude_patterns = [],
+    lint_mode = "fix",
+    mode = "fix",
+)

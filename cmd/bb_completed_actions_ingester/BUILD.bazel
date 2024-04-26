@@ -1,0 +1,42 @@
+load("@com_github_buildbarn_bb_storage//tools:container.bzl", "multiarch_go_image")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("//tools:container.bzl", "container_push_official")
+
+go_library(
+    name = "bb_completed_actions_ingester_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/meroton/buildbar/cmd/bb_completed_actions_ingester",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/completedaction",
+        "//pkg/elasticsearch",
+        "//proto/configuration/bb_completed_actions_ingester",
+        "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
+        "@com_github_buildbarn_bb_storage//pkg/blobstore/configuration",
+        "@com_github_buildbarn_bb_storage//pkg/clock",
+        "@com_github_buildbarn_bb_storage//pkg/global",
+        "@com_github_buildbarn_bb_storage//pkg/grpc",
+        "@com_github_buildbarn_bb_storage//pkg/program",
+        "@com_github_buildbarn_bb_storage//pkg/util",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_binary(
+    name = "bb_completed_actions_ingester",
+    embed = [":bb_completed_actions_ingester_lib"],
+    visibility = ["//visibility:public"],
+)
+
+multiarch_go_image(
+    name = "bb_completed_actions_ingester_container",
+    binary = ":bb_completed_actions_ingester",
+)
+
+container_push_official(
+    name = "bb_completed_actions_ingester_container_push",
+    component = "bb-completed-actions-ingester",
+    image = ":bb_completed_actions_ingester_container",
+)

@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+# gazelle:resolve go github.com/bazelbuild/buildtools/buildifier/utils @com_github_bazelbuild_buildtools//buildifier/utils:go_default_library
+
+go_library(
+    name = "tools",
+    srcs = ["deps.go"],
+    importpath = "github.com/meroton/buildbar/tools",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@cc_mvdan_gofumpt//format",
+        "@com_github_bazelbuild_buildtools//buildifier/utils:go_default_library",
+        "@org_golang_x_lint//:lint",
+    ],
+)

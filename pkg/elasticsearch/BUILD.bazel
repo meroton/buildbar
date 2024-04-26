@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "elasticsearch",
+    srcs = ["elasticsearch.go"],
+    importpath = "github.com/meroton/buildbar/pkg/elasticsearch",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/configuration/elasticsearch",
+        "@com_github_buildbarn_bb_storage//pkg/util",
+        "@com_github_elastic_go_elasticsearch_v8//:go-elasticsearch",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

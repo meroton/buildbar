@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package buildbar.configuration.bb_completed_actions_ingester;
+
+import "pkg/proto/configuration/blobstore/blobstore.proto";
+import "pkg/proto/configuration/global/global.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+import "proto/configuration/elasticsearch/elasticsearch.proto";
+
+option go_package = "github.com/meroton/buildbar/proto/configuration/bb_completed_actions_ingester";
+
+message ApplicationConfiguration {
+  // gRPC servers to spawn to listen for requests from clients.
+  repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 1;
+
+  // Content Addressable Storage to read actions information from.
+  buildbarn.configuration.blobstore.BlobAccessConfiguration
+      content_addressable_storage = 2;
+
+  // Maximum Protobuf message size to unmarshal.
+  int64 maximum_message_size_bytes = 3;
+
+  // Common configuration options that apply to all Buildbarn binaries.
+  buildbarn.configuration.global.Configuration global = 4;
+
+  // Elastic Search server to connect.
+  elasticsearch.ClientConfiguration elasticsearch = 5;
+
+  // The Elasticsearch index upload completed actions to.
+  string elasticsearch_index = 6;
+}

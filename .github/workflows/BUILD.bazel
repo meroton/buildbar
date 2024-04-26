@@ -1,0 +1,23 @@
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_file")
+
+write_source_file(
+    name = "workflows",
+    additional_update_targets = [
+        ":main_yaml",
+        ":pull_requests_yaml",
+    ],
+)
+
+write_source_file(
+    name = "main_yaml",
+    in_file = "//tools/github_workflows:main.yaml",
+    out_file = ":main.yaml",
+    suggested_update_target = ":workflows",
+)
+
+write_source_file(
+    name = "pull_requests_yaml",
+    in_file = "//tools/github_workflows:pull-requests.yaml",
+    out_file = ":pull-requests.yaml",
+    suggested_update_target = ":workflows",
+)

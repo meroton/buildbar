@@ -1,0 +1,36 @@
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_file")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "elasticsearch_proto",
+    srcs = ["elasticsearch.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "elasticsearch_go_proto",
+    importpath = "github.com/meroton/buildbar/proto/configuration/elasticsearch",
+    proto = ":elasticsearch_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "elasticsearch",
+    embed = [":elasticsearch_go_proto"],
+    importpath = "github.com/meroton/buildbar/proto/configuration/elasticsearch",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "elasticsearch_go_proto_pb_go",
+    srcs = [":elasticsearch_go_proto"],
+    output_group = "go_generated_srcs",
+)
+
+write_source_file(
+    name = "elasticsearch_pb_go",
+    in_file = ":elasticsearch_go_proto_pb_go",
+    out_file = "elasticsearch.pb.go",
+)

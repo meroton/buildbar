@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package buildbar.configuration.elasticsearch;
+
+option go_package = "github.com/meroton/buildbar/proto/configuration/elasticsearch";
+
+message ClientConfiguration {
+  // Addresses of the Elastic servers to which to connect. This string may be
+  // in the form of "https://address:port".
+  repeated string addresses = 1;
+
+  // Credentials for authenticating against the Elastic server.
+  ClientCredentials credentials = 2;
+
+  // Flag that controls whether a client verifies the server's certificate
+  // chain and host name. If set to true, TLS is susceptible to
+  // machine-in-the-middle attacks.
+  bool insecure_skip_verify_tls = 3;
+}
+
+message ClientCredentials {
+  message HttpBasicAuth {
+    // Username for HTTP Basic Authentication.
+    string username = 1;
+
+    // Password for HTTP Basic Authentication.
+    string password = 2;
+  }
+
+  oneof credentials {
+    // Connect using HTTP Basic Authentication.
+    HttpBasicAuth basic_auth = 1;
+
+    // Base64-encoded token for authorization.
+    string api_key = 2;
+
+    // Service token for authorization.
+    string service_token = 3;
+  }
+}
