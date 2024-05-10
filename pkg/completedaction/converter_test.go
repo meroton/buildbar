@@ -9,7 +9,6 @@ import (
 	cas_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/cas"
 	cal_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/completedactionlogger"
 	"github.com/buildbarn/bb-remote-execution/pkg/proto/resourceusage"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/golang/mock/gomock"
@@ -23,20 +22,6 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-type logIngester struct {
-	contentAddressableStorage blobstore.BlobAccess
-}
-
-func NewLogIngesterImpl(contentAddressableStorage blobstore.BlobAccess) completedaction.Ingester {
-	return &logIngester{
-		contentAddressableStorage: contentAddressableStorage,
-	}
-}
-
-func (li *logIngester) LogCompletedActions(inOut cal_proto.CompletedActionLogger_LogCompletedActionsServer) error {
-	return nil
-}
 
 func exampleCompletedAction(t *testing.T) *cal_proto.CompletedAction {
 	requestMetadata, err := anypb.New(&remoteexecution.RequestMetadata{
