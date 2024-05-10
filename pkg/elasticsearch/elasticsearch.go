@@ -24,7 +24,7 @@ func NewClientFromConfiguration(configuration *pb.ClientConfiguration) (*elastic
 	elasticsearchConfig := elasticsearch.Config{
 		Addresses: configuration.Addresses,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: configuration.InsecureSkipVerifyTls},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: configuration.SkipVerifyTls},
 		},
 	}
 
