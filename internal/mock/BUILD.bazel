@@ -4,6 +4,16 @@ load("@rules_go//extras:gomock.bzl", "gomock")
 load("@rules_go//go:def.bzl", "go_library")
 
 gomock(
+    name = "aliases",
+    out = "aliases.go",
+    interfaces = [
+        "RoundTripper",
+    ],
+    library = "//internal/mock/aliases",
+    package = "mock",
+)
+
+gomock(
     name = "blobstore",
     out = "blobstore.go",
     interfaces = ["BlobAccess"],
@@ -19,16 +29,25 @@ gomock(
     package = "mock",
 )
 
+gomock(
+    name = "completedactionlogger",
+    out = "completedactionlogger.go",
+    interfaces = ["CompletedActionLogger_LogCompletedActionsServer"],
+    library = "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
+    package = "mock",
+)
+
 go_library(
     name = "mock",
     srcs = [
+        "aliases.go",
         "blobstore.go",
         "completedaction.go",
+        "completedactionlogger.go",
     ],
     importpath = "github.com/meroton/buildbar/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//pkg/completedaction",
         "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
         "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
         "@com_github_buildbarn_bb_storage//pkg/blobstore",
@@ -36,5 +55,7 @@ go_library(
         "@com_github_buildbarn_bb_storage//pkg/blobstore/slicing",
         "@com_github_buildbarn_bb_storage//pkg/digest",
         "@com_github_golang_mock//gomock",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_protobuf//types/known/emptypb",
     ],
 )
