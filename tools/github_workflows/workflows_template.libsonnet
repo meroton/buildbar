@@ -76,6 +76,7 @@
           name: 'Gazelle',
           run: |||
             find proto -name BUILD.bazel -delete &&
+            git checkout proto/bazelbuild/bazel/BUILD.bazel &&
             bazel run //:gazelle &&
             tools/append_proto_write_source_targets.sh
           |||,
@@ -90,7 +91,7 @@
         },
         {
           name: 'Clang format',
-          run: "find . -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +",
+          run: "find pkg/ -name '*.proto' -exec bazel run @llvm_toolchain_llvm//:bin/clang-format -- -i {} +",
         },
         {
           name: 'Test style conformance',
