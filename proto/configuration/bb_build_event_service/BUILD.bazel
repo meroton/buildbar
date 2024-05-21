@@ -1,0 +1,46 @@
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_file")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "bb_build_event_service_proto",
+    srcs = ["bb_build_event_service.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/configuration/elasticsearch:elasticsearch_proto",
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/global:global_proto",
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc:grpc_proto",
+    ],
+)
+
+go_proto_library(
+    name = "bb_build_event_service_go_proto",
+    importpath = "github.com/meroton/buildbar/proto/configuration/bb_build_event_service",
+    proto = ":bb_build_event_service_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//proto/configuration/elasticsearch",
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/global",
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc",
+    ],
+)
+
+go_library(
+    name = "bb_build_event_service",
+    embed = [":bb_build_event_service_go_proto"],
+    importpath = "github.com/meroton/buildbar/proto/configuration/bb_build_event_service",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "bb_build_event_service_go_proto_pb_go",
+    srcs = [":bb_build_event_service_go_proto"],
+    output_group = "go_generated_srcs",
+)
+
+write_source_file(
+    name = "bb_build_event_service_pb_go",
+    in_file = ":bb_build_event_service_go_proto_pb_go",
+    out_file = "bb_build_event_service.pb.go",
+)

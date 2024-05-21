@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package buildbar.configuration.bb_build_event_service;
+
+import "pkg/proto/configuration/global/global.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+import "proto/configuration/elasticsearch/elasticsearch.proto";
+
+option go_package = "github.com/meroton/buildbar/proto/configuration/bb_build_event_service";
+
+message ApplicationConfiguration {
+  // gRPC servers to spawn to listen for requests from clients.
+  repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 1;
+
+  // Maximum Protobuf message size to unmarshal.
+  int64 maximum_message_size_bytes = 2;
+
+  // Common configuration options that apply to all Buildbarn binaries.
+  buildbarn.configuration.global.Configuration global = 3;
+
+  // Servers to forward the build event stream to.
+  repeated BuildEventReceiver relay_targets = 4;
+
+  // Elastic Search server to connect.
+  elasticsearch.ClientConfiguration elasticsearch = 5;
+
+  // The Elasticsearch index build events to.
+  string elasticsearch_index = 6;
+}
+
+message BuildEventReceiver {
+  // GRPC endpoint to which to connect.
+  buildbarn.configuration.grpc.ClientConfiguration endpoint = 1;
+
+  enum ErrorMode {
+    // Propagate any error back to the client. This means synchronous
+    // write of build events and the stream will not be closed until
+    // the endpoint has also been sucessfully closed.
+    FAIL_ON_ERROR = 0;
+
+    // Send all build events asynchronously. If an error occurs,
+    // it will be reported back if the stream is still open.
+    BEST_EFFORT = 1;
+
+    // Send all build events asynchronously and ignore any error
+    // that occurs.
+    IGNORE_ERRORS = 2;
+  }
+
+  // Describes how to forward errors.
+  ErrorMode error_mode = 2;
+
+  // Whether or not to log errors or just forward them back to the
+  // client. In case of BEST_EFFORT and IGNORE_ERRORS, it is
+  // recommended to enable this flag.
+  bool log_errors = 3;
+}
