@@ -11,7 +11,7 @@ if false && [ -e bazel-dist.zip ]; then
     exit 1
 fi
 
-# curl -L -o bazel-dist.zip https://github.com/bazelbuild/bazel/releases/download/7.1.2/bazel-7.1.2-dist.zip
+curl -L -o bazel-dist.zip https://github.com/bazelbuild/bazel/releases/download/7.1.2/bazel-7.1.2-dist.zip
 
 function extract_file {
     echo "Extracting $1" 1>&2
@@ -27,4 +27,4 @@ extract_file src/main/protobuf/failure_details.proto
 extract_file src/main/protobuf/invocation_policy.proto
 extract_file src/main/protobuf/option_filters.proto
 
-# rm bazel-dist.zip
+rm bazel-dist.zip

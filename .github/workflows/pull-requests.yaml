@@ -17,7 +17,7 @@
             },
             {
                "name": "Gazelle",
-               "run": "find proto -name BUILD.bazel -delete &&\nbazel run //:gazelle &&\ntools/append_proto_write_source_targets.sh\n"
+               "run": "find proto -name BUILD.bazel -delete &&\ngit checkout proto/bazelbuild/bazel/BUILD.bazel &&\nbazel run //:gazelle &&\ntools/append_proto_write_source_targets.sh\n"
             },
             {
                "name": "Buildifier",
