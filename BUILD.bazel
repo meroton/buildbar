@@ -4,6 +4,9 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:go_grpc_compilers @rules_go//proto:go_proto,@rules_go//proto:go_grpc_v2
 # gazelle:go_naming_convention_external import
 # gazelle:prefix github.com/meroton/buildbar
+# gazelle:resolve go github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto //proto/bazelbuild/bazel:build_event_stream
+# gazelle:resolve go github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/packages/metrics //proto/bazelbuild/bazel:package_load_metrics
+# gazelle:resolve go github.com/bazelbuild/bazel/src/main/protobuf //proto/bazelbuild/bazel:src_main_protobuf
 # gazelle:resolve proto build/bazel/remote/execution/v2/remote_execution.proto @com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto
 # gazelle:resolve proto go build/bazel/remote/execution/v2/remote_execution.proto @com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution
 # gazelle:resolve proto go pkg/proto/completedactionlogger/completed_action_logger.proto @com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger
@@ -27,6 +30,7 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:resolve proto pkg/proto/configuration/eviction/eviction.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/eviction:eviction_proto
 # gazelle:resolve proto pkg/proto/configuration/global/global.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/global:global_proto
 # gazelle:resolve proto pkg/proto/configuration/grpc/grpc.proto @com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc:grpc_proto
+
 gazelle(
     name = "gazelle",
 )
