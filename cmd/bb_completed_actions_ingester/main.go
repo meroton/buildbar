@@ -60,9 +60,12 @@ func main() {
 			return status.Error(codes.InvalidArgument, "The configured Elasticsearch index is empty")
 		}
 		ingester := completedaction.NewIngester(
-			elasticsearchClient,
-			configuration.ElasticsearchIndex,
-			clock.SystemClock,
+			elasticsearch.NewUploader(
+				elasticsearchClient,
+				configuration.ElasticsearchIndex,
+				clock.SystemClock,
+				util.DefaultErrorLogger,
+			),
 			completedaction.NewConverter(
 				contentAddressableStorage.BlobAccess,
 				int(configuration.MaximumMessageSizeBytes),

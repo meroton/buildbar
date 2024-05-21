@@ -1,14 +1,36 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "elasticsearch",
-    srcs = ["elasticsearch.go"],
+    srcs = [
+        "elasticsearch.go",
+        "uploader.go",
+    ],
     importpath = "github.com/meroton/buildbar/pkg/elasticsearch",
     visibility = ["//visibility:public"],
     deps = [
         "//proto/configuration/elasticsearch",
+        "@com_github_buildbarn_bb_storage//pkg/clock",
         "@com_github_buildbarn_bb_storage//pkg/util",
         "@com_github_elastic_go_elasticsearch_v8//:go-elasticsearch",
+        "@com_github_elastic_go_elasticsearch_v8//typedapi/types/enums/result",
+        "@com_github_prometheus_client_golang//prometheus",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_test(
+    name = "elasticsearch_test",
+    srcs = ["uploader_test.go"],
+    deps = [
+        ":elasticsearch",
+        "//internal/mock",
+        "@com_github_buildbarn_bb_storage//pkg/clock",
+        "@com_github_buildbarn_bb_storage//pkg/testutil",
+        "@com_github_elastic_go_elasticsearch_v8//:go-elasticsearch",
+        "@com_github_golang_mock//gomock",
+        "@com_github_stretchr_testify//require",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
     ],

@@ -37,13 +37,33 @@ gomock(
     package = "mock",
 )
 
+gomock(
+    name = "elasticsearch",
+    out = "elasticsearch.go",
+    interfaces = ["Uploader"],
+    library = "//pkg/elasticsearch",
+    package = "mock",
+)
+
+gomock(
+    name = "storage_util",
+    out = "storage_util.go",
+    interfaces = [
+        "ErrorLogger",
+    ],
+    library = "@com_github_buildbarn_bb_storage//pkg/util",
+    package = "mock",
+)
+
 go_library(
     name = "mock",
     srcs = [
-        "aliases.go",
-        "blobstore.go",
-        "completedaction.go",
-        "completedactionlogger.go",
+        ":aliases.go",
+        ":blobstore.go",
+        ":completedaction.go",
+        ":completedactionlogger.go",
+        ":elasticsearch.go",
+        ":storage_util.go",
     ],
     importpath = "github.com/meroton/buildbar/internal/mock",
     visibility = ["//:__subpackages__"],
