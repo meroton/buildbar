@@ -116,7 +116,7 @@ ALL_FILES = SRC_MAIN_PROTOBUF_FILES + OTHER_FILES
     name = s + "_go_proto_pb_go",
     srcs = [":src_main_protobuf_go_proto_pb_go"],
     outs = [s + "_generated.pb.go"],
-    cmd = "cat \"$$(echo $(locations :src_main_protobuf_go_proto_pb_go) | tr ' ' '\n' | grep %s)\" > $@" % s,
+    cmd = "cp \"$$(echo $(locations :src_main_protobuf_go_proto_pb_go) | tr ' ' '\n' | grep %s)\" $@" % s,
 ) for s in SRC_MAIN_PROTOBUF_FILES]
 
 filegroup(
