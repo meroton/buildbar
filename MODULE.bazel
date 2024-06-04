@@ -1,5 +1,11 @@
 module(name = "com_github_meroton_buildbar")
 
+bazel_dep(name = "com_github_meroton_buildbar_bazel")
+local_path_override(
+    module_name = "com_github_meroton_buildbar_bazel",
+    path = "third_party/bazel",
+)
+
 bazel_dep(name = "aspect_bazel_lib", version = "2.6.0")
 bazel_dep(name = "aspect_rules_js", version = "1.39.1")
 bazel_dep(name = "com_github_buildbarn_bb_remote_execution")

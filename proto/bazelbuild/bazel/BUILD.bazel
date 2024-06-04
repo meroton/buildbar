@@ -13,11 +13,11 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "src_main_protobuf_proto",
     srcs = [
-        "action_cache.proto",
-        "command_line.proto",
-        "failure_details.proto",
-        "invocation_policy.proto",
-        "option_filters.proto",
+        "@com_github_meroton_buildbar_bazel//protobuf:action_cache.proto",
+        "@com_github_meroton_buildbar_bazel//protobuf:command_line.proto",
+        "@com_github_meroton_buildbar_bazel//protobuf:failure_details.proto",
+        "@com_github_meroton_buildbar_bazel//protobuf:invocation_policy.proto",
+        "@com_github_meroton_buildbar_bazel//protobuf:option_filters.proto",
     ],
     import_prefix = "src/main/protobuf/",
     strip_import_prefix = "/proto/bazelbuild/bazel/",
@@ -40,7 +40,7 @@ go_library(
 
 proto_library(
     name = "build_event_stream_proto",
-    srcs = ["build_event_stream.proto"],
+    srcs = ["@com_github_meroton_buildbar_bazel//protobuf:build_event_stream.proto"],
     import_prefix = "src/main/java/com/google/devtools/build/lib/buildeventstream/proto",
     strip_import_prefix = "/proto/bazelbuild/bazel/",
     deps = [
@@ -70,7 +70,7 @@ go_library(
 
 proto_library(
     name = "package_load_metrics_proto",
-    srcs = ["package_load_metrics.proto"],
+    srcs = ["@com_github_meroton_buildbar_bazel//protobuf:package_load_metrics.proto"],
     import_prefix = "src/main/java/com/google/devtools/build/lib/packages/metrics/",
     strip_import_prefix = "/proto/bazelbuild/bazel/",
     deps = [

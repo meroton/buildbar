@@ -21,7 +21,7 @@ PROTO_FILES = {
     name = name + "_proto",
     in_file = name + "_proto_src",
     out_file = ":%s.proto" % name,
-    suggested_update_target = ":protobuf",
+    # suggested_update_target = ":protobuf",
 ) for name in PROTO_FILES.keys()]
 
 write_source_file(
