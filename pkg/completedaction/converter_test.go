@@ -271,6 +271,7 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 				"size_bytes": 0
 			},
 			"timeout": 3600,
+			"do_not_cache": false,
 			"salt": "salt",
 			"salt_bytes": "73616c74",
 			"platform": null,

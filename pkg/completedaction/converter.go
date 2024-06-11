@@ -72,6 +72,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 			"command_digest":    convertDigest(action.CommandDigest),
 			"input_root_digest": convertDigest(action.InputRootDigest),
 			"timeout":           action.Timeout.AsDuration().Seconds(),
+			"do_not_cache":      action.DoNotCache,
 			"salt":              string(action.Salt),
 			"salt_bytes":        hex.EncodeToString(action.Salt),
 			"platform":          platformMap,
