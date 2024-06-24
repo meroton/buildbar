@@ -287,7 +287,6 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 			]
 		},
 		"command": {
-			"arguments": "sh -c 'echo '\\''Hello world'\\'",
 			"arguments_list": null,
 			"argv0": "sh",
 			"argv1": "-c",
