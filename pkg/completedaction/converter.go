@@ -13,6 +13,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/blobstore"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/kballard/go-shellquote"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -84,9 +85,8 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 			environmentMap[env.Name] = env.Value
 		}
 		convertedCommand := map[string]interface{}{
-			// command.Arguments joined to a string can get too long for ingesting as a keyword.
-			// Therefore, only ingesting it as a list.
 			"arguments_list":          command.Arguments,
+			"arguments":               shellquote.Join(command.Arguments...),
 			"environment":             environmentMap,
 			"environment_list":        protoListToJSONToInterface(command.EnvironmentVariables),
 			"output_paths":            command.OutputPaths,
