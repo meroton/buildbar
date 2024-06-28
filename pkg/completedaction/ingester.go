@@ -68,7 +68,10 @@ func (cai *Ingester) LogCompletedActions(stream cal_proto.CompletedActionLogger_
 			return util.StatusWrapf(err, "Failed to marshal completed action %s", completedAction.Uuid)
 		}
 		if err := cai.uploader.Put(stream.Context(), completedAction.Uuid, flatCompletedAction); err != nil {
-			return util.StatusWrap(err, "Failed to ingest completed action")
+			if util.IsInfrastructureError(err) {
+				// Let the client know that it needs to retry.
+				return util.StatusWrap(err, "Failed to ingest completed action")
+			}
 		}
 		// Acknowledge the CompletedAction and let the client drop it from its queue.
 		stream.Send(&emptypb.Empty{})

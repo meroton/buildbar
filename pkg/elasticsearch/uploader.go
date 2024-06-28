@@ -2,14 +2,17 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/result"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -69,10 +72,24 @@ func (u *uploader) Put(ctx context.Context, id string, document interface{}) err
 		Do(ctx)
 	duration := u.clock.Now().Sub(indexStartTime)
 	if err != nil {
-		uploaderUploadDurationSeconds.
-			WithLabelValues(u.index, "transport-error").
-			Observe(duration.Seconds())
-		return util.StatusWrapf(err, "Failed to index document %s into %s in Elasticsearch", id, u.index)
+		var esErr *types.ElasticsearchError
+		var statusCode codes.Code
+		if errors.As(err, &esErr) && esErr.Status < 500 {
+			// There is no point to retry if the error code is under 500.
+			uploaderUploadDurationSeconds.
+				WithLabelValues(u.index, "client-error").
+				Observe(duration.Seconds())
+			statusCode = codes.InvalidArgument
+		} else {
+			// Retry >=500 errors.
+			uploaderUploadDurationSeconds.
+				WithLabelValues(u.index, "transport-error").
+				Observe(duration.Seconds())
+			statusCode = codes.Unknown
+		}
+		err = util.StatusWrapfWithCode(err, statusCode, "Failed to index document %s into %s in Elasticsearch", id, u.index)
+		u.warningLogger.Log(err)
+		return err
 	}
 	uploaderUploadDurationSeconds.
 		WithLabelValues(u.index, res.Result.String()).

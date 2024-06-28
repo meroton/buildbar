@@ -83,7 +83,7 @@ func TestUploader(t *testing.T) {
 			return response, nil
 		})
 		errorLogger.EXPECT().Log(gomock.Any()).DoAndReturn(func(err error) {
-			require.Error(t, err, "Unexpected successful result when indexing my-uuid into my-index in Elasticsearch: noop")
+			require.ErrorContains(t, err, "Unexpected successful result when indexing my-uuid into my-index in Elasticsearch: noop")
 		})
 
 		uploader := bb_elasticsearch.NewUploader(esClient, "my-index", clock, errorLogger)
@@ -102,9 +102,32 @@ func TestUploader(t *testing.T) {
 			Header:     header,
 			Body:       io.NopCloser(bytes.NewBufferString(`{"result": "created"}`)),
 		}, nil)
+		errorLogger.EXPECT().Log(gomock.Any()).DoAndReturn(func(err error) {
+			testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to index document my-uuid into my-index in Elasticsearch: "), err)
+		})
 
 		uploader := bb_elasticsearch.NewUploader(esClient, "my-index", clock, errorLogger)
 		err := uploader.Put(ctx, "my-uuid", flattenedAction)
-		testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Failed to index document my-uuid into my-index in Elasticsearch: status: 400, failed: [], reason: "), err)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.InvalidArgument, "Failed to index document my-uuid into my-index in Elasticsearch: "), err)
+	})
+
+	// Retry on server errors, i.e. status code >=500.
+	t.Run("ServerError", func(t *testing.T) {
+		header := http.Header{}
+		header.Add("X-Elastic-Product", "Elasticsearch")
+		roundTripper.EXPECT().RoundTrip(gomock.Any()).Return(&http.Response{
+			Status:     "500 Internal server error",
+			StatusCode: 500,
+			Header:     header,
+			Body:       io.NopCloser(bytes.NewBufferString(``)),
+		}, nil)
+		// The error should be logged.
+		errorLogger.EXPECT().Log(gomock.Any()).DoAndReturn(func(err error) {
+			testutil.RequirePrefixedStatus(t, status.Error(codes.Unknown, "Failed to index document my-uuid into my-index in Elasticsearch: "), err)
+		})
+
+		uploader := bb_elasticsearch.NewUploader(esClient, "my-index", clock, errorLogger)
+		err := uploader.Put(ctx, "my-uuid", flattenedAction)
+		testutil.RequirePrefixedStatus(t, status.Error(codes.Unknown, "Failed to index document my-uuid into my-index in Elasticsearch: "), err)
 	})
 }
