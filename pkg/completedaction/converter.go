@@ -134,9 +134,18 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 				"node_properties": protoToJSONToInterface(outputFile.NodeProperties),
 			}
 		}
+		convertedOutputDirectories := make([]interface{}, len(result.OutputDirectories))
+		for i, outputDir := range result.OutputDirectories {
+			convertedOutputDirectories[i] = map[string]interface{}{
+				"path":                    outputDir.Path,
+				"tree_digest":             convertDigest(outputDir.TreeDigest),
+				"is_topologically_sorted": outputDir.IsTopologicallySorted,
+				"root_directory_digest":   convertDigest(outputDir.RootDirectoryDigest),
+			}
+		}
 		document["result"] = map[string]interface{}{
 			"exit_code":          result.ExitCode,
-			"output_directories": protoListToJSONToInterface(result.OutputDirectories),
+			"output_directories": convertedOutputDirectories,
 			"output_files":       convertedOutputFiles,
 			"output_symlinks":    protoListToJSONToInterface(result.OutputSymlinks),
 			"stdout_digest":      convertDigest(result.GetStdoutDigest()),
@@ -245,7 +254,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 	return document, nil
 }
 
-func convertDigest(digest *remoteexecution.Digest) map[string]interface{} {
+func convertDigest(digest *remoteexecution.Digest) interface{} {
 	if digest == nil {
 		return nil
 	}
