@@ -13,6 +13,7 @@ go_library(
         "@com_github_buildbarn_bb_storage//pkg/clock",
         "@com_github_buildbarn_bb_storage//pkg/util",
         "@com_github_elastic_go_elasticsearch_v8//:go-elasticsearch",
+        "@com_github_elastic_go_elasticsearch_v8//typedapi/types",
         "@com_github_elastic_go_elasticsearch_v8//typedapi/types/enums/result",
         "@com_github_prometheus_client_golang//prometheus",
         "@org_golang_google_grpc//codes",

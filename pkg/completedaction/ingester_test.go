@@ -51,6 +51,22 @@ func TestCompletedActionIngester(t *testing.T) {
 		calStream.EXPECT().Context().AnyTimes().Return(ingestContext)
 		calStream.EXPECT().Recv().Return(completedAction, nil)
 		converter.EXPECT().FlattenCompletedAction(ingestContext, completedAction).Return(flattenedAction, nil)
+		uploader.EXPECT().Put(ingestContext, "my-uuid", flattenedAction).Return(status.Errorf(codes.InvalidArgument, "Server error"))
+		// Should send ACK anyway.
+		calStream.EXPECT().Send(&emptypb.Empty{}).Return(nil)
+		calStream.EXPECT().Recv().Return(nil, io.EOF)
+
+		ingester := completedaction.NewIngester(uploader, converter)
+		err := ingester.LogCompletedActions(calStream)
+		testutil.RequireEqualStatus(t, status.Error(codes.Unknown, "Failed to receive completed action: EOF"), err)
+	})
+
+	// Report back to retry on infrastructure errors.
+	t.Run("UploadWithInfrastructureError", func(t *testing.T) {
+		ingestContext := context.WithValue(ctx, "key", "value")
+		calStream.EXPECT().Context().AnyTimes().Return(ingestContext)
+		calStream.EXPECT().Recv().Return(completedAction, nil)
+		converter.EXPECT().FlattenCompletedAction(ingestContext, completedAction).Return(flattenedAction, nil)
 		uploader.EXPECT().Put(ingestContext, "my-uuid", flattenedAction).Return(errors.New("Upload failed"))
 
 		ingester := completedaction.NewIngester(uploader, converter)
