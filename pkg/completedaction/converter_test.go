@@ -103,11 +103,19 @@ func exampleCompletedAction(t *testing.T) *cal_proto.CompletedAction {
 					},
 					OutputDirectories: []*remoteexecution.OutputDirectory{
 						{
+							Path: "another_directory",
+							RootDirectoryDigest: &remoteexecution.Digest{
+								Hash:      "40f484c1f676fbcdae68",
+								SizeBytes: 85,
+							},
+						},
+						{
 							Path: "some_directory",
 							TreeDigest: &remoteexecution.Digest{
 								Hash:      "0342e9502cf8c4cea71de4c33669b60f",
 								SizeBytes: 237944,
 							},
+							IsTopologicallySorted: true,
 						},
 					},
 					OutputSymlinks: []*remoteexecution.OutputSymlink{
@@ -324,15 +332,25 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 			"exit_code": 123,
 			"output_directories": [
 				{
+					"path": "another_directory",
+					"tree_digest": null,
+					"is_topologically_sorted": false,
+					"root_directory_digest": {
+						"hash": "40f484c1f676fbcdae68",
+						"size_bytes": 85
+					}
+				},
+				{
 					"path": "some_directory",
 					"tree_digest": {
 						"hash": "0342e9502cf8c4cea71de4c33669b60f",
-						"size_bytes": "237944"
+						"size_bytes": 237944
 					},
-					"is_topologically_sorted": false
+					"is_topologically_sorted": true,
+					"root_directory_digest": null
 				}
 			],
-			"output_directories_count": 1,
+			"output_directories_count": 2,
 			"output_files": [
 				{
 					"digest": {
@@ -354,7 +372,7 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 				}
 			],
 			"output_symlinks_count": 1,
-			"total_output_count": 3,
+			"total_output_count": 4,
 			"stderr_digest": {
 				"hash": "d4fab1f04e470bcca0b75219e1ea560d",
 				"size_bytes": 8
