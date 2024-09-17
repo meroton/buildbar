@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package buildbar.configuration.bb_build_event_service;
+
+import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/global/global.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+import "proto/configuration/buildevents/buildevents.proto";
+
+option go_package = "github.com/meroton/buildbar/proto/configuration/bb_build_event_service";
+
+message ApplicationConfiguration {
+  // gRPC servers to spawn to listen for requests from clients.
+  repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 1;
+
+  // Maximum Protobuf message size to unmarshal.
+  int64 maximum_message_size_bytes = 2;
+
+  // Common configuration options that apply to all Buildbarn binaries.
+  buildbarn.configuration.global.Configuration global = 3;
+
+  // Destination to forward the build event stream to.
+  buildevents.BuildEventStreamConfiguration receiver = 4;
+}

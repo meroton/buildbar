@@ -71,12 +71,15 @@ use_repo(
     "com_github_bazelbuild_buildtools",
     "com_github_bazelbuild_remote_apis",
     "com_github_elastic_go_elasticsearch_v8",
+    "com_github_golang_protobuf",
     "com_github_kballard_go_shellquote",
     "com_github_prometheus_client_golang",
     "com_github_stretchr_testify",
+    "org_golang_google_genproto",
     "org_golang_google_grpc",
     "org_golang_google_protobuf",
     "org_golang_x_lint",
+    "org_golang_x_sync",
     "org_uber_go_mock",
 )
 

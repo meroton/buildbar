@@ -26,6 +26,28 @@ gomock(
 )
 
 gomock(
+    name = "bazelevents",
+    out = "bazelevents.go",
+    interfaces = [
+        "BazelEventServer",
+        "BazelEventStreamClient",
+    ],
+    library = "//pkg/bazelevents",
+    package = "mock",
+)
+
+gomock(
+    name = "buildevents",
+    out = "buildevents.go",
+    interfaces = [
+        "BuildEventServer",
+        "BuildToolEventStreamClient",
+    ],
+    library = "//pkg/buildevents",
+    package = "mock",
+)
+
+gomock(
     name = "completedaction",
     out = "completedaction.go",
     interfaces = ["Converter"],
@@ -71,7 +93,9 @@ go_library(
     name = "mock",
     srcs = [
         ":aliases.go",
+        ":bazelevents.go",
         ":blobstore.go",
+        ":buildevents.go",
         ":completedaction.go",
         ":completedactionlogger.go",
         ":elasticsearch.go",
@@ -80,12 +104,16 @@ go_library(
     importpath = "github.com/meroton/buildbar/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
+        "//pkg/bazelevents",
+        "//pkg/buildevents",
+        "//third_party/bazel:build_event_stream",
         "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
         "@com_github_buildbarn_bb_storage//pkg/blobstore",
         "@com_github_buildbarn_bb_storage//pkg/blobstore/buffer",
         "@com_github_buildbarn_bb_storage//pkg/blobstore/slicing",
         "@com_github_buildbarn_bb_storage//pkg/digest",
+        "@org_golang_google_genproto//googleapis/devtools/build/v1:build",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_protobuf//types/known/emptypb",
         "@org_uber_go_mock//gomock",

@@ -8,6 +8,7 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:resolve go github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/packages/metrics //third_party/bazel:package_load_metrics
 # gazelle:resolve go github.com/bazelbuild/bazel/src/main/protobuf //third_party/bazel:src_main_protobuf
 # gazelle:resolve go github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2 @bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto
+# gazelle:resolve go google.golang.org/genproto/googleapis/devtools/build/v1 @org_golang_google_genproto//googleapis/devtools/build/v1:build
 # gazelle:resolve proto build/bazel/remote/execution/v2/remote_execution.proto @bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_proto
 # gazelle:resolve proto go build/bazel/remote/execution/v2/remote_execution.proto @bazel_remote_apis//build/bazel/remote/execution/v2:execution
 # gazelle:resolve proto go pkg/proto/completedactionlogger/completed_action_logger.proto @com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger

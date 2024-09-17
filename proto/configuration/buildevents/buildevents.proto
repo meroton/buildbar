@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package buildbar.configuration.buildevents;
+
+import "google/protobuf/empty.proto";
+import "pkg/proto/configuration/global/global.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+import "proto/configuration/elasticsearch/elasticsearch.proto";
+
+option go_package = "github.com/meroton/buildbar/proto/configuration/buildevents";
+
+message BuildEventStreamConfiguration {
+  oneof backend {
+    // Sends the build events to multiple backends.
+    MultiplexingBESConfiguration multiplexing = 1;
+
+    // Annotates a backend, e.g. all the error messages.
+    AnnotatedBESConfiguration annotated = 2;
+
+    // Forwards the build events to a remote gRPC Build Event Stream
+    // receiver.
+    buildbarn.configuration.grpc.ClientConfiguration grpc = 3;
+
+    // Uploads the build events to Elasticsearch.
+    ElasticsearchBESConfiguration elasticsearch = 4;
+
+    // Allocates an internal buffer for a potentially slow backend.
+    BufferedBESConfiguration buffered = 5;
+
+    // Ignores any errors streaming events to the backend and
+    // continues to respond as if build events are consumed.
+    BuildEventStreamConfiguration error_ignoring = 6;
+
+    // Removes sensitive data from the build events.
+    BazelRedactingBESConfiguration redacting = 7;
+  }
+}
+
+message MultiplexingBESConfiguration {
+  // A list of backends to synchronously forward the build events to.
+  // This means that if one backend starts blocking incoming events,
+  // no other backend will receive them either.
+  repeated BuildEventStreamConfiguration backends = 1;
+}
+
+message AnnotatedBESConfiguration {
+  // Build event stream to annotate.
+  BuildEventStreamConfiguration backend = 1;
+
+  // A label that will be added to all the errors returned by the backend.
+  string label = 2;
+}
+
+message BufferedBESConfiguration {
+  // The backend that might be slow.
+  BuildEventStreamConfiguration backend = 1;
+
+  // Maximum number of messages in the queue before applying back pressure.
+  int32 queue_size = 2;
+}
+
+message BazelRedactingBESConfiguration {
+  // The backend that might be slow.
+  BuildEventStreamConfiguration backend = 1;
+
+  // Variables not to redact, specified as RE2 expressions
+  // where ^ will be prepended and $ appended to perform
+  // a full string match.
+  //
+  // Any expressions specified by the client in the ALLOWED_ENV
+  // variable will be added to the list.
+  //
+  // This setting affects environment variables (--client_env),
+  // build metadata (--build_metadata) and workspace status.
+  repeated string allowed_variables = 2;
+}
+
+message ElasticsearchBESConfiguration {
+  // The server to connect.
+  elasticsearch.ClientConfiguration endpoint = 1;
+
+  // The Elasticsearch index to store build events in.
+  string index = 2;
+
+  message MetadataSource {
+    oneof source {
+      // Name of a --client_env variable.
+      string client_env = 1;
+
+      // Name of a --build_metadata variable.
+      string build_metadata = 2;
+
+      // Name of a variable from the workspace status command.
+      string workspace_status = 3;
+    }
+  }
+
+  message MetadataSources {
+    // The first match will be used.
+    repeated MetadataSource sources = 2;
+
+    // Optional default value if no source match.
+    string default = 4;
+  }
+
+  // Metadata that will be added to each ingested document.
+  //
+  map<string, MetadataSources> metadata = 3;
+}

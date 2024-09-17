@@ -1,0 +1,39 @@
+load("@com_github_buildbarn_bb_storage//tools:container.bzl", "multiarch_go_image")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("//tools:container.bzl", "container_push_official")
+
+go_library(
+    name = "bb_build_event_service_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/meroton/buildbar/cmd/bb_build_event_service",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/buildevents",
+        "//proto/configuration/bb_build_event_service",
+        "//third_party/bazel:build_event_stream",
+        "@com_github_buildbarn_bb_storage//pkg/global",
+        "@com_github_buildbarn_bb_storage//pkg/grpc",
+        "@com_github_buildbarn_bb_storage//pkg/program",
+        "@com_github_buildbarn_bb_storage//pkg/util",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)
+
+go_binary(
+    name = "bb_build_event_service",
+    embed = [":bb_build_event_service_lib"],
+    visibility = ["//visibility:public"],
+)
+
+multiarch_go_image(
+    name = "bb_build_event_service_container",
+    binary = ":bb_build_event_service",
+)
+
+container_push_official(
+    name = "bb_build_event_service_container_push",
+    component = "bb-completed-actions-ingester",
+    image = ":bb_build_event_service_container",
+)

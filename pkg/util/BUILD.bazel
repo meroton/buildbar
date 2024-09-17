@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "util",
-    srcs = ["proto_to_json.go"],
+    srcs = [
+        "errgroup.go",
+        "proto_to_json.go",
+    ],
     importpath = "github.com/meroton/buildbar/pkg/util",
     visibility = ["//visibility:public"],
     deps = [
@@ -11,5 +14,6 @@ go_library(
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_x_sync//errgroup",
     ],
 )

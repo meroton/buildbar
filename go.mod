@@ -6,16 +6,20 @@ go 1.23.0
 replace google.golang.org/protobuf => google.golang.org/protobuf v1.32.0
 
 require (
-	github.com/bazelbuild/buildtools v0.0.0-20240827154017-dd10159baa91
+	github.com/bazelbuild/buildtools v0.0.0-20240917114122-a70762a8e645
 	github.com/bazelbuild/remote-apis v0.0.0-20240916201306-de1d77b12feb
 	github.com/buildbarn/bb-remote-execution v0.0.0-20240910191511-fa5964b758bc
 	github.com/buildbarn/bb-storage v0.0.0-20240910154348-a889bc06a407
 	github.com/elastic/go-elasticsearch/v8 v8.15.0
+	github.com/golang/mock v1.6.0
+	github.com/golang/protobuf v1.5.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/prometheus/client_golang v1.20.4
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.4.0
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
+	golang.org/x/sync v0.8.0
+	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1
 	google.golang.org/grpc v1.66.2
 	google.golang.org/protobuf v1.34.2
 	mvdan.cc/gofumpt v0.7.0
@@ -59,7 +63,6 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-jsonnet v0.20.0 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
@@ -94,13 +97,11 @@ require (
 	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.25.0 // indirect
 	google.golang.org/api v0.196.0 // indirect
-	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/bytestream v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
