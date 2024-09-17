@@ -8,9 +8,9 @@ import (
 
 	cal_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/completedactionlogger"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/meroton/buildbar/internal/mock"
 	"github.com/meroton/buildbar/pkg/completedaction"
+	"go.uber.org/mock/gomock"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
