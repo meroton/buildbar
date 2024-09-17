@@ -4,13 +4,13 @@ import (
 	"context"
 	"os"
 
-	bes_proto "github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/meroton/buildbar/pkg/buildevents"
 	"github.com/meroton/buildbar/proto/configuration/bb_build_event_service"
+	build_pb "google.golang.org/genproto/googleapis/devtools/build/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,11 +38,12 @@ func main() {
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create receiver")
 		}
+		besServer := buildevents.NewGrpcServer(receiver)
 
 		if err := bb_grpc.NewServersFromConfigurationAndServe(
 			configuration.GrpcServers,
 			func(s grpc.ServiceRegistrar) {
-				bes_proto.Register(s, receiver)
+				build_pb.RegisterPublishBuildEventServer(s, besServer)
 			},
 			siblingsGroup,
 		); err != nil {
@@ -52,17 +53,4 @@ func main() {
 		lifecycleState.MarkReadyAndWait(siblingsGroup)
 		return nil
 	})
-}
-
-func newRelayTargetFromConfiguration() (pbe_pb.PublishBuildEventClient, error) {
-	switch cacheReplacementPolicy {
-	case pb.CacheReplacementPolicy_FIRST_IN_FIRST_OUT:
-		return NewFIFOSet[T](), nil
-	case pb.CacheReplacementPolicy_LEAST_RECENTLY_USED:
-		return NewLRUSet[T](), nil
-	case pb.CacheReplacementPolicy_RANDOM_REPLACEMENT:
-		return NewRRSet[T](), nil
-	default:
-		return nil, status.Errorf(codes.InvalidArgument, "Unknown cache replacement policy")
-	}
 }

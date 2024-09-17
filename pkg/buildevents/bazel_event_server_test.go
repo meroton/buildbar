@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestBazelEventServer(t *testing.T) {
@@ -40,11 +41,15 @@ func TestBazelEventServer(t *testing.T) {
 		require.NoError(t, err)
 		err = bazelEventData1.UnmarshalTo(bazelEvent1)
 		require.NoError(t, err)
+		eventTime1 := &timestamppb.Timestamp{
+			Seconds: 123,
+		}
 		request1 := &build.PublishBuildToolEventStreamRequest{
 			ProjectId: "my-instance",
 			OrderedBuildEvent: &build.OrderedBuildEvent{
 				StreamId: streamId,
 				Event: &build.BuildEvent{
+					EventTime: eventTime1,
 					Event: &build.BuildEvent_BazelEvent{
 						BazelEvent: bazelEventData1,
 					},
@@ -82,11 +87,11 @@ func TestBazelEventServer(t *testing.T) {
 		require.NoError(t, err)
 
 		// Send Bazel events.
-		streamBackend.EXPECT().Send(bazelEvent1).Return(nil)
+		streamBackend.EXPECT().Send(testutil.EqProto(t, eventTime1), bazelEvent1).Return(nil)
 		err = stream.Send(request1)
 		require.NoError(t, err)
 
-		streamBackend.EXPECT().Send(bazelEvent2).Return(nil)
+		streamBackend.EXPECT().Send(gomock.Any(), bazelEvent2).Return(nil)
 		err = stream.Send(request2)
 		require.NoError(t, err)
 
@@ -164,7 +169,7 @@ func TestBazelEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		streamBackend.EXPECT().Send(bazelEvent1).Return(status.Error(codes.Internal, "Bad"))
+		streamBackend.EXPECT().Send(gomock.Any(), bazelEvent1).Return(status.Error(codes.Internal, "Bad"))
 		err = stream.Send(request1)
 		testutil.RequireEqualStatus(t, status.Error(codes.Internal, "Bad"), err)
 	})
@@ -196,7 +201,7 @@ func TestBazelEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		streamBackend.EXPECT().Send(bazelEvent1).Return(nil)
+		streamBackend.EXPECT().Send(gomock.Any(), bazelEvent1).Return(nil)
 		err = stream.Send(request1)
 		require.NoError(t, err)
 

@@ -107,6 +107,10 @@ go_deps_dev.module_override(
     path = "golang.org/x/lint",
 )
 go_deps_dev.module_override(
+    patches = ["//:patches/org_golang_google_genproto/service-registrar.diff"],
+    path = "google.golang.org/genproto",
+)
+go_deps_dev.module_override(
     patches = [
         "@com_github_buildbarn_bb_storage//:patches/org_uber_go_mock/mocks-for-funcs.diff",
         "@com_github_buildbarn_bb_remote_execution//:patches/org_uber_go_mock/generics.diff",

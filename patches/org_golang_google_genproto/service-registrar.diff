@@ -1,0 +1,11 @@
+--- googleapis/devtools/build/v1/publish_build_event.pb.go
++++ googleapis/devtools/build/v1/publish_build_event.pb.go
+@@ -791,7 +791,7 @@
+ 	return status.Errorf(codes.Unimplemented, "method PublishBuildToolEventStream not implemented")
+ }
+ 
+-func RegisterPublishBuildEventServer(s *grpc.Server, srv PublishBuildEventServer) {
++func RegisterPublishBuildEventServer(s grpc.ServiceRegistrar, srv PublishBuildEventServer) {
+ 	s.RegisterService(&_PublishBuildEvent_serviceDesc, srv)
+ }
+ 
