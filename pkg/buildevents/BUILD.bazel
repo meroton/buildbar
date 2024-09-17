@@ -12,7 +12,6 @@ go_library(
         "grpc_client.go",
         "grpc_server.go",
         "multiplexing_bes.go",
-        "redacting_bes.go",
         "stream_id.go",
     ],
     importpath = "github.com/meroton/buildbar/pkg/buildevents",
@@ -47,7 +46,6 @@ go_test(
         "error_ignoring_bes_test.go",
         "grpc_server_test.go",
         "multiplexing_bes_test.go",
-        "redacting_bes_test.go",
     ],
     deps = [
         ":buildevents",
@@ -55,7 +53,6 @@ go_test(
         "//third_party/bazel:build_event_stream",
         "@com_github_buildbarn_bb_storage//pkg/digest",
         "@com_github_buildbarn_bb_storage//pkg/testutil",
-        "@com_github_golang_mock//gomock",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_genproto//googleapis/devtools/build/v1:build",
         "@org_golang_google_grpc//:grpc",
@@ -64,5 +61,6 @@ go_test(
         "@org_golang_google_grpc//status",
         "@org_golang_google_grpc//test/bufconn",
         "@org_golang_google_protobuf//types/known/anypb",
+        "@org_uber_go_mock//gomock",
     ],
 )
