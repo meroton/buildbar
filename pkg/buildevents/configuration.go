@@ -57,12 +57,14 @@ func NewBuildEventsServerFromConfiguration(ctx context.Context, configuration *p
 			return nil, status.Error(codes.InvalidArgument, "The configured Elasticsearch index is empty")
 		}
 		ingester := bazelevents.NewIngester(
+			bazelevents.NewConverter,
 			elasticsearch.NewUploader(
 				elasticsearchClient,
 				config.Index,
 				clock.SystemClock,
 				util.DefaultErrorLogger,
 			),
+			util.DefaultErrorLogger,
 		)
 		return NewBazelBuildEventServer(ingester), nil
 	case *pb_buildevents.BuildEventStreamConfiguration_Buffered:

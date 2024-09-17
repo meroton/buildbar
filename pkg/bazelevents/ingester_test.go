@@ -18,11 +18,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func TestBuildEventIngester(t *testing.T) {
+func TestBazelEventsIngester(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	converter := mock.NewMockConverter(ctrl)
-	calStream := mock.NewMockCompletedActionLogger_LogCompletedActionsServer(ctrl)
 	uploader := mock.NewMockUploader(ctrl)
 
 	completedAction := &cal_proto.CompletedAction{

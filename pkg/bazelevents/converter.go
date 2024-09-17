@@ -2,387 +2,528 @@ package bazelevents
 
 import (
 	"context"
-	"encoding/json"
-	"log"
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
 
 	buildeventstream "github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto"
-	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
-	cal_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/completedactionlogger"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
-	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/kballard/go-shellquote"
+	buildbarutil "github.com/meroton/buildbar/pkg/util"
 
-	build "google.golang.org/genproto/googleapis/devtools/build/v1"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Converter converts a CompletedAction into a format that is
 // suitable for Elasticsearch.
 type Converter interface {
-	ExtractInterestingData(ctx context.Context, buildEvent *build.PublishBuildToolEventStreamRequest) (map[string]interface{}, error)
+	ExtractInterestingData(ctx context.Context, eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) (map[string]map[string]interface{}, error)
+}
+
+type platformInfo map[string]string
+
+var nonePlatform = platformInfo{
+	"mnemonic": "source",
+	"name":     "source",
+	"type":     "source",
+}
+
+var unknownPlatform = platformInfo{
+	"mnemonic": "unknown",
+	"name":     "unknown",
+	"type":     "unknown",
 }
 
 type converter struct {
-	contentAddressableStorage blobstore.BlobAccess
-	maximumMessageSizeBytes   int
+	errorLogger util.ErrorLogger
+
+	buildMetadata  map[string]string
+	configurations map[string]platformInfo
+	buildStartTime *timestamppb.Timestamp
 }
 
 // NewConverter creates a new Converter.
-func NewConverter(
-	contentAddressableStorage blobstore.BlobAccess,
-	maximumMessageSizeBytes int,
-) Converter {
+func NewConverter(errorLogger util.ErrorLogger) Converter {
 	return &converter{
-		contentAddressableStorage: contentAddressableStorage,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		errorLogger: errorLogger,
+		configurations: map[string]platformInfo{
+			// build_event_stream.ConfigurationId describes a special "none" id.
+			"none": nonePlatform,
+		},
 	}
 }
 
-// ExtractInterestingData expands certain array structures to be able to index
-// data in Elasticsearch. It also populates the message with extra useful
-// attributes.
-func (bec *converter) ExtractInterestingData(ctx context.Context, buildEvent *build.PublishBuildToolEventStreamRequest) (map[string]interface{}, error) {
-	// Ignore the following fields.
-	instanceName := buildEvent.ProjectId
-	log.Printf("%#v", instanceName)
-	// buildEvent.NotificationKeywords
-	// buildEvent.CheckPrecedingLifecycleEventsPresent
-	if buildEvent.OrderedBuildEvent.SequenceNumber == 1 {
-		correlatedInvocationID := buildEvent.OrderedBuildEvent.StreamId.BuildId
-		invocationID := buildEvent.OrderedBuildEvent.StreamId.InvocationId
-		// buildEvent.OrderedBuildEvent.StreamId.Component
-		log.Printf("%#v %#v", correlatedInvocationID, invocationID)
+func (c *converter) getPlatformInfo(configurationID string) platformInfo {
+	if pi, ok := c.configurations[configurationID]; ok {
+		return pi
 	}
-	log.Printf("%#v", buildEvent.OrderedBuildEvent.Event.EventTime)
-	switch event := buildEvent.OrderedBuildEvent.Event.Event.(type) {
-	case *build.BuildEvent_InvocationAttemptStarted_:
-		x := event.InvocationAttemptStarted
-		log.Printf("%#v", x)
-	case *build.BuildEvent_InvocationAttemptFinished_:
-		x := event.InvocationAttemptFinished
-		log.Printf("%#v", x)
-	case *build.BuildEvent_BuildEnqueued_:
-		x := event.BuildEnqueued.Details
-		log.Printf("%#v", x)
-	case *build.BuildEvent_BuildFinished_:
-		x := event.BuildFinished.Status
-		y := event.BuildFinished.Details
-		log.Printf("%#v", x, y)
-	case *build.BuildEvent_ConsoleOutput_:
-		x := event.ConsoleOutput.Type
-		log.Printf("%#v", x)
-		switch y := event.ConsoleOutput.Output.(type) {
-		case *build.BuildEvent_ConsoleOutput_BinaryOutput:
-		case *build.BuildEvent_ConsoleOutput_TextOutput:
-			log.Printf("%#v", y)
-		}
-	case *build.BuildEvent_ComponentStreamFinished:
-		x := event.ComponentStreamFinished.Type
-		log.Printf("%#v", x)
-	case *build.BuildEvent_BazelEvent:
-		var bazelBuildEvent buildeventstream.BuildEvent
-		if err := event.BazelEvent.UnmarshalTo(&bazelBuildEvent); err != nil {
-			return nil, err
-		}
-		log.Printf("%#v", bazelBuildEvent)
-	case *build.BuildEvent_BuildExecutionEvent:
-		x := event.BuildExecutionEvent
-		log.Printf("%#v", x)
-	case *build.BuildEvent_SourceFetchEvent:
-		x := event.SourceFetchEvent
-		log.Printf("%#v", x)
-	}
-	document := map[string]interface{}{}
-	/*
-		document := map[string]interface{}{
-			"action_digest":   convertDigest(completedAction.HistoricalExecuteResponse.GetActionDigest()),
-			"uuid":            buildEvent,
-			"instance_name":   completedAction.InstanceName,
-			"digest_function": completedAction.DigestFunction.String(),
-		}
-
-		action, command, getActionErr := cac.getAction(ctx, completedAction)
-		if getActionErr != nil {
-			document["action_fetch_error"] = status.Convert(getActionErr).Message()
-		}
-		if action != nil {
-			platformMap := map[string]string{}
-			for _, platformProperty := range action.Platform.GetProperties() {
-				existingValue, ok := platformMap[platformProperty.Name]
-				if ok {
-					existingValue += ","
-				}
-				platformMap[platformProperty.Name] = existingValue + platformProperty.Value
-			}
-			document["action"] = map[string]interface{}{
-				"command_digest":    convertDigest(action.CommandDigest),
-				"input_root_digest": convertDigest(action.InputRootDigest),
-				"timeout":           action.Timeout.AsDuration().Seconds(),
-				"salt":              string(action.Salt),
-				"salt_bytes":        hex.EncodeToString(action.Salt),
-				"platform":          platformMap,
-				"platform_list":     protoListToJSONToInterface(action.Platform.GetProperties()),
-			}
-		}
-		if command != nil {
-			environmentMap := map[string]string{}
-			for _, env := range command.EnvironmentVariables {
-				environmentMap[env.Name] = env.Value
-			}
-			convertedCommand := map[string]interface{}{
-				"arguments_list":          command.Arguments,
-				"arguments":               shellquote.Join(command.Arguments...),
-				"environment":             environmentMap,
-				"environment_list":        protoListToJSONToInterface(command.EnvironmentVariables),
-				"output_paths":            command.OutputPaths,
-				"working_directory":       command.WorkingDirectory,
-				"output_directory_format": command.OutputDirectoryFormat.String(),
-			}
-			// argv0 is often interesting. Sometimes also a few more arguments,
-			// for example `python3 -B file.py`.`
-			for i, arg := range command.Arguments {
-				if i >= 4 {
-					// Don't bloat the database with too many fields.
-					break
-				}
-				convertedCommand[fmt.Sprintf("argv%d", i)] = arg
-			}
-			// Do the same but for `sh -c '...'`.
-			if len(command.Arguments) >= 3 && command.Arguments[1] == "-c" {
-				for i, arg := range strings.Split(command.Arguments[2], " ") {
-					if i >= 4 {
-						// Don't bloat the database with too many fields.
-						break
-					}
-					convertedCommand[fmt.Sprintf("cmd%d", i)] = arg
-				}
-			}
-			document["command"] = convertedCommand
-		}
-		executeResponse := completedAction.HistoricalExecuteResponse.GetExecuteResponse()
-		if executeResponse != nil {
-			document["execute_response"] = map[string]interface{}{
-				"message":       executeResponse.Message,
-				"cached_result": executeResponse.CachedResult,
-				"status":        codes.Code(executeResponse.Status.GetCode()).String(),
-				"server_logs":   protoMapToJSONToInterface(executeResponse.ServerLogs),
-			}
-		}
-		result := executeResponse.GetResult()
-		if result != nil {
-			convertedOutputFiles := make([]interface{}, len(result.OutputFiles))
-			for i, outputFile := range result.OutputFiles {
-				convertedOutputFiles[i] = map[string]interface{}{
-					"path":            outputFile.Path,
-					"digest":          convertDigest(outputFile.Digest),
-					"is_executable":   outputFile.IsExecutable,
-					"node_properties": protoToJSONToInterface(outputFile.NodeProperties),
-				}
-			}
-			document["result"] = map[string]interface{}{
-				"exit_code":          result.ExitCode,
-				"output_directories": protoListToJSONToInterface(result.OutputDirectories),
-				"output_files":       convertedOutputFiles,
-				"output_symlinks":    protoListToJSONToInterface(result.OutputSymlinks),
-				"stdout_digest":      convertDigest(result.GetStdoutDigest()),
-				"stderr_digest":      convertDigest(result.GetStderrDigest()),
-				// Calculate some extra metrics, nice to have.
-				"output_directories_count": len(result.OutputDirectories),
-				"output_files_count":       len(result.OutputFiles),
-				"output_symlinks_count":    len(result.OutputSymlinks),
-				"total_output_count":       len(result.OutputDirectories) + len(result.OutputFiles) + len(result.OutputSymlinks),
-			}
-		}
-		executionMetadata := result.GetExecutionMetadata()
-		if executionMetadata != nil {
-			metadata := protoToJSONToInterface(executionMetadata)
-			delete(metadata, "auxiliary_metadata")
-			// Decode the worker string in case it is a JSON formatted string.
-			var workerJSON interface{}
-			if json.Unmarshal([]byte(executionMetadata.GetWorker()), &workerJSON) == nil {
-				metadata["worker_json"] = workerJSON
-			}
-			// Convert durations
-			metadata["virtual_execution_duration"] = convertDuration(executionMetadata.VirtualExecutionDuration)
-			if executionMetadata.WorkerStartTimestamp.IsValid() && executionMetadata.QueuedTimestamp.IsValid() {
-				metadata["queued_duration"] = executionMetadata.WorkerStartTimestamp.AsTime().Sub(
-					executionMetadata.QueuedTimestamp.AsTime()).Seconds()
-			}
-			if executionMetadata.InputFetchStartTimestamp.IsValid() && executionMetadata.WorkerStartTimestamp.IsValid() {
-				metadata["startup_duration"] = executionMetadata.InputFetchStartTimestamp.AsTime().Sub(
-					executionMetadata.WorkerStartTimestamp.AsTime()).Seconds()
-			}
-			if executionMetadata.InputFetchCompletedTimestamp.IsValid() && executionMetadata.InputFetchStartTimestamp.IsValid() {
-				metadata["input_fetch_duration"] = executionMetadata.InputFetchCompletedTimestamp.AsTime().Sub(
-					executionMetadata.InputFetchStartTimestamp.AsTime()).Seconds()
-			}
-			if executionMetadata.ExecutionCompletedTimestamp.IsValid() && executionMetadata.ExecutionStartTimestamp.IsValid() {
-				metadata["wall_execution_duration"] = executionMetadata.ExecutionCompletedTimestamp.AsTime().Sub(
-					executionMetadata.ExecutionStartTimestamp.AsTime()).Seconds()
-			}
-			if executionMetadata.OutputUploadCompletedTimestamp.IsValid() && executionMetadata.OutputUploadStartTimestamp.IsValid() {
-				metadata["output_upload_duration"] = executionMetadata.OutputUploadCompletedTimestamp.AsTime().Sub(
-					executionMetadata.OutputUploadStartTimestamp.AsTime()).Seconds()
-			}
-			if executionMetadata.WorkerCompletedTimestamp.IsValid() && executionMetadata.WorkerStartTimestamp.IsValid() {
-				metadata["total_worker_duration"] = executionMetadata.WorkerCompletedTimestamp.AsTime().Sub(
-					executionMetadata.WorkerStartTimestamp.AsTime()).Seconds()
-			}
-			if executionMetadata.WorkerCompletedTimestamp.IsValid() && executionMetadata.QueuedTimestamp.IsValid() {
-				metadata["total_queue_and_execute_duration"] = executionMetadata.WorkerCompletedTimestamp.AsTime().Sub(
-					executionMetadata.QueuedTimestamp.AsTime()).Seconds()
-			}
-
-			var unknownMetadataTypes []string
-			for _, auxiliaryMetadata := range executionMetadata.GetAuxiliaryMetadata() {
-				var filePool resourceusage.FilePoolResourceUsage
-				var inputRoot resourceusage.InputRootResourceUsage
-				var monetary resourceusage.MonetaryResourceUsage
-				var posix resourceusage.POSIXResourceUsage
-				var request remoteexecution.RequestMetadata
-				if auxiliaryMetadata.UnmarshalTo(&filePool) == nil {
-					metadata["file_pool"] = map[string]interface{}{
-						"files_created":         float64(filePool.FilesCreated),
-						"files_count_peak":      float64(filePool.FilesCountPeak),
-						"files_size_bytes_peak": float64(filePool.FilesSizeBytesPeak),
-						"reads_count":           float64(filePool.ReadsCount),
-						"reads_size_bytes":      float64(filePool.ReadsSizeBytes),
-						"writes_count":          float64(filePool.WritesCount),
-						"writes_size_bytes":     float64(filePool.WritesSizeBytes),
-						"truncates_count":       float64(filePool.TruncatesCount),
-					}
-				} else if auxiliaryMetadata.UnmarshalTo(&inputRoot) == nil {
-					metadata["input_root"] = map[string]interface{}{
-						"directories_resolved": float64(inputRoot.DirectoriesResolved),
-						"directories_read":     float64(inputRoot.DirectoriesRead),
-						"files_read":           float64(inputRoot.FilesRead),
-					}
-				} else if auxiliaryMetadata.UnmarshalTo(&monetary) == nil {
-					metadata["monetary"] = protoToJSONToInterface(&monetary)
-				} else if auxiliaryMetadata.UnmarshalTo(&posix) == nil {
-					metadata["posix"] = map[string]interface{}{
-						"user_time":                    convertDuration(posix.UserTime),
-						"system_time":                  convertDuration(posix.SystemTime),
-						"maximum_resident_set_size":    float64(posix.MaximumResidentSetSize),
-						"page_reclaims":                float64(posix.PageReclaims),
-						"page_faults":                  float64(posix.PageFaults),
-						"swaps":                        float64(posix.Swaps),
-						"block_input_operations":       float64(posix.BlockInputOperations),
-						"block_output_operations":      float64(posix.BlockOutputOperations),
-						"messages_sent":                float64(posix.MessagesSent),
-						"messages_received":            float64(posix.MessagesReceived),
-						"signals_received":             float64(posix.SignalsReceived),
-						"voluntary_context_switches":   float64(posix.VoluntaryContextSwitches),
-						"involuntary_context_switches": float64(posix.InvoluntaryContextSwitches),
-					}
-				} else if auxiliaryMetadata.UnmarshalTo(&request) == nil {
-					metadata["request"] = protoToJSONToInterface(&request)
-				} else {
-					typeStr := strings.TrimPrefix(auxiliaryMetadata.TypeUrl, "type.googleapis.com/")
-					unknownMetadataTypes = append(unknownMetadataTypes, typeStr)
-				}
-			}
-			document["metadata"] = metadata
-			if unknownMetadataTypes != nil {
-				document["unknown_metadata_types"] = unknownMetadataTypes
-			}
-		}
-	*/
-	return document, nil
+	return unknownPlatform
 }
 
-func convertDigest(digest *remoteexecution.Digest) map[string]interface{} {
-	if digest == nil {
-		return nil
+func (c *converter) ExtractInterestingData(ctx context.Context, eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) (map[string]map[string]interface{}, error) {
+	var documents map[string]map[string]interface{}
+
+	// TODO: FRME save documents until metadata has been collected.
+
+	// UnknownBuildEventId (unknown) is not handled
+	// PatternExpandedId (pattern_skipped) is not handled
+	// UnconfiguredLabelId (unconfigured_label) is not handled
+	// ConfiguredLabelId (configured_label) is not handled
+	switch p := event.Payload.(type) {
+	case *buildeventstream.BuildEvent_Progress: // ProgressId (progress)
+		// noop
+	case *buildeventstream.BuildEvent_Aborted: // Any or no ID.
+		// noop
+	case *buildeventstream.BuildEvent_Started: // BuildStartedId (started)
+		// TODO: Parse TargetPatternId
+		documents = c.publishStartedEvent(p.Started)
+	case *buildeventstream.BuildEvent_UnstructuredCommandLine: // UnstructuredCommandLineId (unstructured_command_line)
+		// noop
+	case *buildeventstream.BuildEvent_StructuredCommandLine: // StructuredCommandLineId (structured_command_line)
+		// noop
+	case *buildeventstream.BuildEvent_OptionsParsed: // OptionsParsedId (options_parsed)
+		documents = c.publishOptionsParsed(p.OptionsParsed)
+	case *buildeventstream.BuildEvent_WorkspaceStatus: // WorkspaceStatusId (workspace_status)
+		documents = c.publishWorkspaceStatus(p.WorkspaceStatus)
+	case *buildeventstream.BuildEvent_Fetch: // FetchId (fetch)
+		id := event.Id.GetFetch()
+		if id.GetUrl() == "" {
+			return nil, status.Error(codes.InvalidArgument, "Empty fetch url")
+		}
+		documents = c.publishFetch(eventTime, id, p.Fetch)
+	case *buildeventstream.BuildEvent_Configuration: // ConfigurationId (configuration)
+		id := event.Id.GetConfiguration()
+		if id == nil {
+			return nil, status.Error(codes.InvalidArgument, "Missing configuration ID")
+		}
+		documents = c.collectAndPublishConfiguration(id, p.Configuration)
+	case *buildeventstream.BuildEvent_Expanded: // PatternExpandedId (pattern)
+		// noop
+	case *buildeventstream.BuildEvent_Configured: // TargetConfiguredId (target_configured)
+		// noop
+	case *buildeventstream.BuildEvent_Action: // ActionCompletedId (action_completed)
+		id := event.Id.GetActionCompleted()
+		if id == nil {
+			return nil, status.Error(codes.InvalidArgument, "Missing action_completed ID")
+		}
+		documents = c.publishFailedAction(id, p.Action)
+	case *buildeventstream.BuildEvent_NamedSetOfFiles: // NamedSetOfFilesId (named_set)
+		// noop
+	case *buildeventstream.BuildEvent_Completed: // TargetCompletedId (target_completed)
+		id := event.Id.GetTargetCompleted()
+		if id == nil {
+			return nil, status.Error(codes.InvalidArgument, "Missing target_completed ID")
+		}
+		documents = c.publishTargetCompleted(id, p.Completed)
+	case *buildeventstream.BuildEvent_TestResult: // TestResultId (test_result)
+		id := event.Id.GetTestResult()
+		if id == nil {
+			return nil, status.Error(codes.InvalidArgument, "Missing test_result ID")
+		}
+		documents = c.publishTestResult(id, p.TestResult)
+	case *buildeventstream.BuildEvent_TestProgress: // TestProgressId (test_progress)
+		// noop
+	case *buildeventstream.BuildEvent_TestSummary: // TestSummaryId (test_summary)
+		id := event.Id.GetTestSummary()
+		if id == nil {
+			return nil, status.Error(codes.InvalidArgument, "Missing test_summary ID")
+		}
+		documents = c.publishTestSummary(id, p.TestSummary)
+	case *buildeventstream.BuildEvent_TargetSummary: // TargetSummaryId (target_summary)
+		id := event.Id.GetTargetSummary()
+		if id == nil {
+			return nil, status.Error(codes.InvalidArgument, "Missing target_summary ID")
+		}
+		documents = c.publishTargetSummary(id, p.TargetSummary)
+	case *buildeventstream.BuildEvent_Finished: // BuildFinishedId (build_finished)
+		documents = c.publishBuildFinished(p.Finished)
+	case *buildeventstream.BuildEvent_BuildToolLogs: // BuildToolLogsId (build_tool_logs)
+		// noop
+	case *buildeventstream.BuildEvent_BuildMetrics: // BuildMetricsId (build_metrics)
+		documents = c.publishBuildMetrics(p.BuildMetrics)
+	case *buildeventstream.BuildEvent_WorkspaceInfo: // WorkspaceConfigId (workspace)
+		// noop
+	case *buildeventstream.BuildEvent_BuildMetadata: // BuildMetadataId (build_metadata)
+		documents = c.collectAndPublishBuildMetadata(p.BuildMetadata)
+	case *buildeventstream.BuildEvent_ConvenienceSymlinksIdentified: // ConvenienceSymlinksIdentifiedId (convenience_symlinks_identified)
+		// noop
+	case *buildeventstream.BuildEvent_ExecRequest: // ExecRequestId (exec_request)
+		// TODO: May contain secrets on the command line or in the environment, log it?
 	}
-	return map[string]interface{}{
-		"hash":       digest.Hash,
-		"size_bytes": float64(digest.SizeBytes),
+
+	fullDocuments := map[string]map[string]interface{}{}
+	for suffix, document := range documents {
+		fullDocument := map[string]interface{}{
+			"event_time": eventTime.String(),
+			"metadata":   c.buildMetadata,
+		}
+		for key, value := range document {
+			fullDocument[key] = value
+		}
+		fullDocuments[suffix] = fullDocument
+	}
+	return fullDocuments, nil
+}
+
+func (c *converter) publishStartedEvent(payload *buildeventstream.BuildStarted) map[string]map[string]interface{} {
+	c.buildStartTime = payload.StartTime
+	return map[string]map[string]interface{}{
+		"started": {
+			"type":                "Started",
+			"uuid":                payload.Uuid,
+			"start_time":          payload.StartTime.String(),
+			"build_tool_version":  payload.BuildToolVersion,
+			"options_description": payload.OptionsDescription,
+			"started_command":     payload.Command,
+			"working_directory":   payload.WorkingDirectory,
+			"workspace_directory": payload.WorkspaceDirectory,
+		},
 	}
 }
 
-func convertDuration(duration *durationpb.Duration) float64 {
-	if duration == nil {
-		return 0
+func (c *converter) publishOptionsParsed(payload *buildeventstream.OptionsParsed) map[string]map[string]interface{} {
+	options := map[string]interface{}{
+		"startup_options_list":          payload.StartupOptions,
+		"startup_options":               shellquote.Join(payload.StartupOptions...),
+		"explicit_startup_options_list": payload.ExplicitStartupOptions,
+		"explicit_startup_options":      shellquote.Join(payload.ExplicitStartupOptions...),
+		"cmd_line_list":                 payload.CmdLine,
+		"cmd_line":                      shellquote.Join(payload.CmdLine...),
+		"explicit_cmd_line_list":        payload.ExplicitCmdLine,
+		"explicit_cmd_line":             shellquote.Join(payload.ExplicitCmdLine...),
+		"invocation_policy":             buildbarutil.ProtoToJSONToInterface(payload.InvocationPolicy),
+		"tool_tag":                      payload.ToolTag,
 	}
-	return duration.AsDuration().Seconds()
+	return map[string]map[string]interface{}{
+		"command-line": {
+			"type":    "OptionsParsed",
+			"options": options,
+		},
+	}
 }
 
-func protoToJSONToInterface(m protoreflect.ProtoMessage) map[string]interface{} {
-	marshaled, err := protojson.MarshalOptions{
-		UseEnumNumbers:    false,
-		UseProtoNames:     true,
-		EmitDefaultValues: true,
-	}.Marshal(m)
-	if err != nil {
-		return map[string]interface{}{
-			"error": status.Convert(util.StatusWrap(err, "Failed to marshal")).Message(),
+func (c *converter) publishWorkspaceStatus(payload *buildeventstream.WorkspaceStatus) map[string]map[string]interface{} {
+	workspaceStatus := map[string]interface{}{}
+	for _, item := range payload.Item {
+		workspaceStatus[item.Key] = item.Value
+	}
+	return map[string]map[string]interface{}{
+		"workspace-status": {
+			"type":             "WorkspaceStatus",
+			"workspace_status": workspaceStatus,
+		},
+	}
+}
+
+func (c *converter) publishFetch(eventTime *timestamppb.Timestamp, id *buildeventstream.BuildEventId_FetchId, payload *buildeventstream.Fetch) map[string]map[string]interface{} {
+	fetch := map[string]interface{}{
+		"url":     id.Url,
+		"success": payload.Success,
+	}
+	if eventTime.IsValid() && c.buildStartTime.IsValid() {
+		fetch["duration_from_start"] = eventTime.AsTime().Sub(c.buildStartTime.AsTime()).Seconds
+	}
+	digestBytes := md5.Sum([]byte(id.Url))
+	digestHex := hex.EncodeToString(digestBytes[:])
+	return map[string]map[string]interface{}{
+		"fetch-" + digestHex: {
+			"type":  "Fetch",
+			"fetch": fetch,
+		},
+	}
+}
+
+func (c *converter) collectAndPublishConfiguration(id *buildeventstream.BuildEventId_ConfigurationId, payload *buildeventstream.Configuration) map[string]map[string]interface{} {
+	var platformType string
+	if payload.IsTool {
+		platformType = "exec"
+	} else {
+		platformType = "target"
+	}
+	platformInfo := platformInfo{
+		"mnemonic": payload.Mnemonic,
+		"name":     payload.PlatformName,
+		"type":     platformType,
+	}
+	c.configurations[id.Id] = platformInfo
+	return map[string]map[string]interface{}{
+		"configuration-" + id.Id: {
+			"type": "Configuration",
+			"configuration": map[string]interface{}{
+				"mnemonic": payload.Mnemonic,
+				"id":       id.Id,
+				"name":     payload.PlatformName,
+				"type":     platformType,
+			},
+		},
+	}
+}
+
+func (c *converter) publishFailedAction(id *buildeventstream.BuildEventId_ActionCompletedId, payload *buildeventstream.ActionExecuted) map[string]map[string]interface{} {
+	if !payload.Success {
+		action := map[string]interface{}{
+			// "success":        payload.Success,
+			"primary_output": id.PrimaryOutput,
+			"mnemonic":       payload.Type,
+			"exit_code":      payload.ExitCode,
+			"command_list":   payload.CommandLine,
+			"command":        shellquote.Join(payload.CommandLine...),
+			"start_time":     payload.StartTime,
+			"end_time":       payload.EndTime,
+		}
+		if payload.StartTime.IsValid() && payload.EndTime.IsValid() {
+			action["duration"] = payload.EndTime.AsTime().Sub(
+				payload.StartTime.AsTime()).Seconds()
+		}
+		return map[string]map[string]interface{}{
+			"action-completed-" + id.PrimaryOutput: {
+				"type":     "FailedAction",
+				"label":    id.Label,
+				"platform": c.getPlatformInfo(id.Configuration.GetId()),
+				"action":   action,
+			},
 		}
 	}
-	ret := map[string]interface{}{}
-	if err := json.Unmarshal(marshaled, &ret); err != nil {
-		return map[string]interface{}{
-			"error": status.Convert(util.StatusWrap(err, "Failed to unmarshal")).Message(),
+	return nil
+}
+
+func (c *converter) publishTargetCompleted(id *buildeventstream.BuildEventId_TargetCompletedId, payload *buildeventstream.TargetComplete) map[string]map[string]interface{} {
+	// TODO: List first few filed per output group, requires collection of file sets.
+	// outputGroups := map[string]interface{}
+	outputGroupNames := []string{}
+	for _, pbOutputGroup := range payload.OutputGroup {
+		outputGroupNames = append(outputGroupNames, pbOutputGroup.Name)
+	}
+	docID := id.Label + "-" + id.Configuration.GetId()
+	if id.Aspect != "" {
+		docID += "-" + id.Aspect
+	}
+	return map[string]map[string]interface{}{
+		docID: {
+			"type":     "TargetCompleted",
+			"label":    id.Label,
+			"platform": c.getPlatformInfo(id.Configuration.GetId()),
+			"aspect":   id.Aspect,
+			"target_result": map[string]interface{}{
+				"success":            payload.Success,
+				"output_group_names": outputGroupNames,
+				"tags":               payload.Tag,
+				"test_timeout":       payload.TestTimeout.AsDuration().Seconds,
+				"failure_message":    payload.FailureDetail.GetMessage(),
+				// TODO: Add the failure detail enums.
+			},
+		},
+	}
+}
+
+func (c *converter) publishTestResult(id *buildeventstream.BuildEventId_TestResultId, payload *buildeventstream.TestResult) map[string]map[string]interface{} {
+	testResult := map[string]interface{}{
+		"run":     id.Run,
+		"shard":   id.Shard,
+		"attempt": id.Attempt,
+
+		"status":             payload.Status.String(),
+		"cached_locally":     payload.CachedLocally,
+		"start_time":         payload.TestAttemptStart,
+		"duration":           payload.TestAttemptDuration.AsDuration().Seconds,
+		"execution_strategy": payload.ExecutionInfo.GetStrategy(),
+		"remote_cache_hit":   payload.ExecutionInfo.GetCachedRemotely(),
+		"exit_code":          payload.ExecutionInfo.GetStrategy(),
+		"executor_hostname":  payload.ExecutionInfo.GetHostname(),
+	}
+	if payload.TestAttemptStart.IsValid() {
+		testResult["end_time"] = payload.TestAttemptStart.AsTime().Add(
+			payload.TestAttemptDuration.AsDuration())
+	}
+	docID := fmt.Sprintf("%s-%s-%d-%d-%d", id.Label, id.Configuration.GetId(), id.Run, id.Shard, id.Attempt)
+	return map[string]map[string]interface{}{
+		docID: {
+			"type":        "TestResult",
+			"label":       id.Label,
+			"platform":    c.getPlatformInfo(id.Configuration.GetId()),
+			"test_result": testResult,
+		},
+	}
+}
+
+func (c *converter) publishTestSummary(id *buildeventstream.BuildEventId_TestSummaryId, payload *buildeventstream.TestSummary) map[string]map[string]interface{} {
+	document := map[string]interface{}{
+		"type":     "TestSummary",
+		"label":    id.Label,
+		"platform": c.getPlatformInfo(id.Configuration.GetId()),
+		"test_summary": map[string]interface{}{
+			"overall_status":           payload.OverallStatus,
+			"total_run_count":          payload.TotalRunCount,
+			"attempt_count":            payload.AttemptCount,
+			"shard_count":              payload.ShardCount,
+			"total_num_cached_actions": payload.TotalNumCached,
+			"total_run_duration":       payload.TotalRunDuration.AsDuration().Seconds,
+		},
+	}
+	return map[string]map[string]interface{}{
+		id.Label + "-" + id.Configuration.GetId(): document,
+	}
+}
+
+func (c *converter) publishTargetSummary(id *buildeventstream.BuildEventId_TargetSummaryId, payload *buildeventstream.TargetSummary) map[string]map[string]interface{} {
+	document := map[string]interface{}{
+		"type":     "TargetSummary",
+		"label":    id.Label,
+		"platform": c.getPlatformInfo(id.Configuration.GetId()),
+		"target_summary": map[string]interface{}{
+			"overall_build_success": payload.OverallBuildSuccess,
+			"overall_test_status":   payload.OverallTestStatus.String(),
+		},
+	}
+	return map[string]map[string]interface{}{
+		id.Label + "-" + id.Configuration.GetId(): document,
+	}
+}
+
+func (c *converter) publishBuildFinished(payload *buildeventstream.BuildFinished) map[string]map[string]interface{} {
+	finished := map[string]interface{}{
+		"exit_code":       payload.ExitCode.GetCode(),
+		"exit_code_name":  payload.ExitCode.GetName(),
+		"finish_time":     payload.FinishTime.String(),
+		"failure_message": payload.FailureDetail.GetMessage(),
+		// TODO: Add the failure detail enums.
+	}
+	if payload.FinishTime.IsValid() && c.buildStartTime.IsValid() {
+		duration := payload.FinishTime.AsTime().Sub(c.buildStartTime.AsTime())
+		finished["build_duration"] = duration.Seconds()
+	}
+	return map[string]map[string]interface{}{
+		"finished": {
+			"type":     "BuildFinished",
+			"finished": finished,
+		},
+	}
+}
+
+func (c *converter) publishBuildMetrics(payload *buildeventstream.BuildMetrics) map[string]map[string]interface{} {
+	documents := map[string]map[string]interface{}{}
+
+	actionDataMap := map[string]interface{}{}
+	for _, pbActionData := range payload.ActionSummary.GetActionData() {
+		actionData := map[string]interface{}{
+			"mnemonic":          pbActionData.Mnemonic,
+			"actions_executed":  pbActionData.ActionsExecuted,
+			"first_started":     float64(pbActionData.FirstStartedMs) / 1000.0,
+			"last_ended":        float64(pbActionData.LastEndedMs) / 1000.0,
+			"total_system_time": pbActionData.SystemTime.AsDuration().Seconds,
+			"total_user_time":   pbActionData.UserTime.AsDuration().Seconds,
+		}
+		actionDataMap[pbActionData.Mnemonic] = actionData
+		// TODO: Remove unless used in the dashboards.
+		documents["metrics-action-data-"+pbActionData.Mnemonic] = map[string]interface{}{
+			"type":        "BuildMetrics-ActionData",
+			"action_data": actionData,
 		}
 	}
-	return ret
+	runnerCountMap := map[string]interface{}{}
+	for _, pbRunnerCount := range payload.ActionSummary.GetRunnerCount() {
+		runnerCount := map[string]interface{}{
+			"name":      pbRunnerCount.Name,
+			"count":     pbRunnerCount.Count,
+			"exec_kind": pbRunnerCount.ExecKind,
+		}
+		runnerCountMap[pbRunnerCount.Name] = runnerCount
+		// TODO: Remove unless used in the dashboards.
+		documents["metrics-runner-count-"+pbRunnerCount.Name] = map[string]interface{}{
+			"type":         "BuildMetrics-RunnerCount",
+			"runner_count": runnerCount,
+		}
+	}
+
+	localMissDetailMap := map[string]interface{}{}
+	for _, pbLocalMissDetails := range payload.ActionSummary.GetActionCacheStatistics().GetMissDetails() {
+		localMissDetailMap[pbLocalMissDetails.Reason.String()] = pbLocalMissDetails.Count
+	}
+	garbageCollected := int64(0)
+	for _, pbGarbageMetrics := range payload.MemoryMetrics.GetGarbageMetrics() {
+		garbageCollected += pbGarbageMetrics.GetGarbageCollected()
+	}
+
+	documents["metrics"] = map[string]interface{}{
+		"type": "BuildMetrics",
+		"metrics": map[string]interface{}{
+			"action_summary": map[string]interface{}{
+				"actions_created":                       payload.ActionSummary.GetActionsCreated(),
+				"actions_created_not_including_aspects": payload.ActionSummary.GetActionsCreatedNotIncludingAspects(),
+				"actions_executed":                      payload.ActionSummary.GetActionsExecuted(),
+			},
+			"local_action_cache": map[string]interface{}{
+				"size_in_bytes": payload.ActionSummary.GetActionCacheStatistics().GetSizeInBytes(),
+				"save_duration": float64(payload.ActionSummary.GetActionCacheStatistics().GetSaveTimeInMs()) / 1000.0,
+				"hits":          payload.ActionSummary.GetActionCacheStatistics().GetHits(),
+				"misses":        payload.ActionSummary.GetActionCacheStatistics().GetMisses(),
+				"miss_details":  localMissDetailMap,
+			},
+			"action_data":  actionDataMap,
+			"runner_count": runnerCountMap,
+			"memory": map[string]interface{}{
+				"used_heap_size_post_build":            float64(payload.MemoryMetrics.GetUsedHeapSizePostBuild()),
+				"peak_post_gc_heap_size":               float64(payload.MemoryMetrics.GetPeakPostGcHeapSize()),
+				"peak_post_gc_tenured_space_heap_size": float64(payload.MemoryMetrics.GetPeakPostGcTenuredSpaceHeapSize()),
+				"bytes_collected":                      float64(garbageCollected),
+			},
+			"targets_configured":                       float64(payload.TargetMetrics.GetTargetsConfigured()),
+			"targets_configured_not_including_aspects": float64(payload.TargetMetrics.GetTargetsConfiguredNotIncludingAspects()),
+			"packages_loaded":                          float64(payload.PackageMetrics.GetPackagesLoaded()),
+			// TODO: Is it possible to create dashboards for PackageLoadMetrics?
+			"cpu_time":             float64(payload.TimingMetrics.GetCpuTimeInMs()) / 1000.0,
+			"wall_time":            float64(payload.TimingMetrics.GetWallTimeInMs()) / 1000.0,
+			"analysis_phase_time":  float64(payload.TimingMetrics.GetAnalysisPhaseTimeInMs()) / 1000.0,
+			"execution_phase_time": float64(payload.TimingMetrics.GetExecutionPhaseTimeInMs()) / 1000.0,
+			"cumulative_server_metrics": map[string]interface{}{
+				"num_analyses": payload.CumulativeMetrics.GetNumAnalyses(),
+				"num_builds":   payload.CumulativeMetrics.GetNumBuilds(),
+			},
+			"artifacts": map[string]interface{}{
+				"source_artifacts_read": map[string]interface{}{
+					"size_bytes": float64(payload.ArtifactMetrics.GetSourceArtifactsRead().GetSizeInBytes()),
+					"count":      payload.ArtifactMetrics.GetSourceArtifactsRead().GetCount(),
+				},
+				"output_artifacts_seen": map[string]interface{}{
+					"size_bytes": float64(payload.ArtifactMetrics.GetOutputArtifactsSeen().GetSizeInBytes()),
+					"count":      payload.ArtifactMetrics.GetOutputArtifactsSeen().GetCount(),
+				},
+				"output_artifacts_from_action_cache": map[string]interface{}{
+					"size_bytes": float64(payload.ArtifactMetrics.GetOutputArtifactsFromActionCache().GetSizeInBytes()),
+					"count":      payload.ArtifactMetrics.GetOutputArtifactsFromActionCache().GetCount(),
+				},
+				"top_level_artifacts": map[string]interface{}{
+					"size_bytes": float64(payload.ArtifactMetrics.GetTopLevelArtifacts().GetSizeInBytes()),
+					"count":      payload.ArtifactMetrics.GetTopLevelArtifacts().GetCount(),
+				},
+			},
+			"build_graph": buildbarutil.ProtoToJSONToInterface(payload.BuildGraphMetrics),
+			// TODO: worker_metrics
+			// TODO: worker_pool_metrics
+			"network": map[string]interface{}{
+				"system": map[string]interface{}{
+					"bytes_sent":                float64(payload.NetworkMetrics.GetSystemNetworkStats().GetBytesSent()),
+					"bytes_recv":                float64(payload.NetworkMetrics.GetSystemNetworkStats().GetBytesRecv()),
+					"packets_sent":              float64(payload.NetworkMetrics.GetSystemNetworkStats().GetPacketsSent()),
+					"packets_recv":              float64(payload.NetworkMetrics.GetSystemNetworkStats().GetPacketsRecv()),
+					"peak_bytes_sent_per_sec":   float64(payload.NetworkMetrics.GetSystemNetworkStats().GetPeakBytesSentPerSec()),
+					"peak_bytes_recv_per_sec":   float64(payload.NetworkMetrics.GetSystemNetworkStats().GetPeakBytesRecvPerSec()),
+					"peak_packets_sent_per_sec": float64(payload.NetworkMetrics.GetSystemNetworkStats().GetPeakPacketsSentPerSec()),
+					"peak_packets_recv_per_sec": float64(payload.NetworkMetrics.GetSystemNetworkStats().GetPeakPacketsRecvPerSec()),
+				},
+			},
+		},
+	}
+	return documents
 }
 
-func protoListToJSONToInterface[V protoreflect.ProtoMessage](m []V) []interface{} {
-	ret := make([]interface{}, len(m))
-	for i, entry := range m {
-		ret[i] = protoToJSONToInterface(entry)
+func (c *converter) collectAndPublishBuildMetadata(payload *buildeventstream.BuildMetadata) map[string]map[string]interface{} {
+	c.buildMetadata = payload.Metadata
+	return map[string]map[string]interface{}{
+		"build-metadata": {
+			"type": "BuildMetadata",
+		},
 	}
-	return ret
-}
-
-func protoMapToJSONToInterface[V protoreflect.ProtoMessage](m map[string]V) map[string]interface{} {
-	ret := make(map[string]interface{}, len(m))
-	for key, value := range m {
-		ret[key] = protoToJSONToInterface(value)
-	}
-	return ret
-}
-
-func (bec *converter) getAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (
-	*remoteexecution.Action, *remoteexecution.Command, error,
-) {
-	instanceName, err := digest.NewInstanceName(completedAction.InstanceName)
-	if err != nil {
-		return nil, nil, util.StatusWrapf(err, "Invalid instance name %#v", completedAction.InstanceName)
-	}
-	digestFunction, err := instanceName.GetDigestFunction(completedAction.DigestFunction, len(completedAction.HistoricalExecuteResponse.GetActionDigest().GetHash()))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	actionDigest, err := digestFunction.NewDigestFromProto(completedAction.HistoricalExecuteResponse.GetActionDigest())
-	if err != nil {
-		return nil, nil, util.StatusWrap(err, "Invalid action digest")
-	}
-	actionMsg, err := bec.contentAddressableStorage.Get(ctx, actionDigest).ToProto(
-		&remoteexecution.Action{},
-		bec.maximumMessageSizeBytes,
-	)
-	if err != nil {
-		return nil, nil, util.StatusWrap(err, "Failed to get action")
-	}
-	action := actionMsg.(*remoteexecution.Action)
-
-	commandDigest, err := digestFunction.NewDigestFromProto(action.CommandDigest)
-	if err != nil {
-		return action, nil, util.StatusWrap(err, "Failed to get command")
-	}
-	commandMsg, err := bec.contentAddressableStorage.Get(ctx, commandDigest).ToProto(
-		&remoteexecution.Command{},
-		bec.maximumMessageSizeBytes,
-	)
-	if err != nil {
-		return action, nil, util.StatusWrap(err, "Failed to get command")
-	}
-	command := commandMsg.(*remoteexecution.Command)
-	return action, command, nil
 }
