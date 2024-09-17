@@ -13,7 +13,7 @@ go_library(
         "//pkg/elasticsearch",
         "//pkg/util",
         "//third_party/bazel:build_event_stream",
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
         "@com_github_buildbarn_bb_storage//pkg/blobstore",
         "@com_github_buildbarn_bb_storage//pkg/digest",

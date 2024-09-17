@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/meroton/buildbar/internal/mock"
 	"github.com/meroton/buildbar/pkg/buildevents"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 )

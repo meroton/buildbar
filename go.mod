@@ -11,7 +11,6 @@ require (
 	github.com/buildbarn/bb-remote-execution v0.0.0-20240910191511-fa5964b758bc
 	github.com/buildbarn/bb-storage v0.0.0-20240910154348-a889bc06a407
 	github.com/elastic/go-elasticsearch/v8 v8.15.0
-	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/prometheus/client_golang v1.20.4

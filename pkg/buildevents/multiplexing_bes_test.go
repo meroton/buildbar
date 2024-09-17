@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/meroton/buildbar/internal/mock"
 	"github.com/meroton/buildbar/pkg/buildevents"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 	"google.golang.org/grpc/codes"

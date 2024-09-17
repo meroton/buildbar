@@ -7,10 +7,10 @@ import (
 	buildeventstream "github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto"
 	bazel_protobuf "github.com/bazelbuild/bazel/src/main/protobuf"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/meroton/buildbar/internal/mock"
 	"github.com/meroton/buildbar/pkg/buildevents"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 	"google.golang.org/grpc/codes"
