@@ -14,12 +14,10 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/kballard/go-shellquote"
+	buildbarutil "github.com/meroton/buildbar/pkg/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // Converter converts a CompletedAction into a format that is
@@ -49,7 +47,7 @@ func NewConverter(
 // attributes.
 func (cac *converter) FlattenCompletedAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (map[string]interface{}, error) {
 	document := map[string]interface{}{
-		"action_digest":   convertDigest(completedAction.HistoricalExecuteResponse.GetActionDigest()),
+		"action_digest":   buildbarutil.ProtoDigestToJSON(completedAction.HistoricalExecuteResponse.GetActionDigest()),
 		"uuid":            completedAction.Uuid,
 		"instance_name":   completedAction.InstanceName,
 		"digest_function": completedAction.DigestFunction.String(),
@@ -69,14 +67,14 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 			platformMap[platformProperty.Name] = existingValue + platformProperty.Value
 		}
 		document["action"] = map[string]interface{}{
-			"command_digest":    convertDigest(action.CommandDigest),
-			"input_root_digest": convertDigest(action.InputRootDigest),
+			"command_digest":    buildbarutil.ProtoDigestToJSON(action.CommandDigest),
+			"input_root_digest": buildbarutil.ProtoDigestToJSON(action.InputRootDigest),
 			"timeout":           action.Timeout.AsDuration().Seconds(),
 			"do_not_cache":      action.DoNotCache,
 			"salt":              string(action.Salt),
 			"salt_bytes":        hex.EncodeToString(action.Salt),
 			"platform":          platformMap,
-			"platform_list":     protoListToJSONToInterface(action.Platform.GetProperties()),
+			"platform_list":     buildbarutil.ProtoListToJSONToInterface(action.Platform.GetProperties()),
 		}
 	}
 	if command != nil {
@@ -88,7 +86,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 			"arguments_list":          command.Arguments,
 			"arguments":               shellquote.Join(command.Arguments...),
 			"environment":             environmentMap,
-			"environment_list":        protoListToJSONToInterface(command.EnvironmentVariables),
+			"environment_list":        buildbarutil.ProtoListToJSONToInterface(command.EnvironmentVariables),
 			"output_paths":            command.OutputPaths,
 			"working_directory":       command.WorkingDirectory,
 			"output_directory_format": command.OutputDirectoryFormat.String(),
@@ -120,7 +118,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 			"message":       executeResponse.Message,
 			"cached_result": executeResponse.CachedResult,
 			"status":        codes.Code(executeResponse.Status.GetCode()).String(),
-			"server_logs":   protoMapToJSONToInterface(executeResponse.ServerLogs),
+			"server_logs":   buildbarutil.ProtoMapToJSONToInterface(executeResponse.ServerLogs),
 		}
 	}
 	result := executeResponse.GetResult()
@@ -129,27 +127,27 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 		for i, outputFile := range result.OutputFiles {
 			convertedOutputFiles[i] = map[string]interface{}{
 				"path":            outputFile.Path,
-				"digest":          convertDigest(outputFile.Digest),
+				"digest":          buildbarutil.ProtoDigestToJSON(outputFile.Digest),
 				"is_executable":   outputFile.IsExecutable,
-				"node_properties": protoToJSONToInterface(outputFile.NodeProperties),
+				"node_properties": buildbarutil.ProtoToJSONToInterface(outputFile.NodeProperties),
 			}
 		}
 		convertedOutputDirectories := make([]interface{}, len(result.OutputDirectories))
 		for i, outputDir := range result.OutputDirectories {
 			convertedOutputDirectories[i] = map[string]interface{}{
 				"path":                    outputDir.Path,
-				"tree_digest":             convertDigest(outputDir.TreeDigest),
+				"tree_digest":             buildbarutil.ProtoDigestToJSON(outputDir.TreeDigest),
 				"is_topologically_sorted": outputDir.IsTopologicallySorted,
-				"root_directory_digest":   convertDigest(outputDir.RootDirectoryDigest),
+				"root_directory_digest":   buildbarutil.ProtoDigestToJSON(outputDir.RootDirectoryDigest),
 			}
 		}
 		document["result"] = map[string]interface{}{
 			"exit_code":          result.ExitCode,
 			"output_directories": convertedOutputDirectories,
 			"output_files":       convertedOutputFiles,
-			"output_symlinks":    protoListToJSONToInterface(result.OutputSymlinks),
-			"stdout_digest":      convertDigest(result.GetStdoutDigest()),
-			"stderr_digest":      convertDigest(result.GetStderrDigest()),
+			"output_symlinks":    buildbarutil.ProtoListToJSONToInterface(result.OutputSymlinks),
+			"stdout_digest":      buildbarutil.ProtoDigestToJSON(result.GetStdoutDigest()),
+			"stderr_digest":      buildbarutil.ProtoDigestToJSON(result.GetStderrDigest()),
 			// Calculate some extra metrics, nice to have.
 			"output_directories_count": len(result.OutputDirectories),
 			"output_files_count":       len(result.OutputFiles),
@@ -159,7 +157,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 	}
 	executionMetadata := result.GetExecutionMetadata()
 	if executionMetadata != nil {
-		metadata := protoToJSONToInterface(executionMetadata)
+		metadata := buildbarutil.ProtoToJSONToInterface(executionMetadata)
 		delete(metadata, "auxiliary_metadata")
 		// Decode the worker string in case it is a JSON formatted string.
 		var workerJSON interface{}
@@ -167,7 +165,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 			metadata["worker_json"] = workerJSON
 		}
 		// Convert durations
-		metadata["virtual_execution_duration"] = convertDuration(executionMetadata.VirtualExecutionDuration)
+		metadata["virtual_execution_duration"] = executionMetadata.VirtualExecutionDuration.AsDuration().Seconds()
 		if executionMetadata.WorkerStartTimestamp.IsValid() && executionMetadata.QueuedTimestamp.IsValid() {
 			metadata["queued_duration"] = executionMetadata.WorkerStartTimestamp.AsTime().Sub(
 				executionMetadata.QueuedTimestamp.AsTime()).Seconds()
@@ -222,11 +220,11 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 					"files_read":           float64(inputRoot.FilesRead),
 				}
 			} else if auxiliaryMetadata.UnmarshalTo(&monetary) == nil {
-				metadata["monetary"] = protoToJSONToInterface(&monetary)
+				metadata["monetary"] = buildbarutil.ProtoToJSONToInterface(&monetary)
 			} else if auxiliaryMetadata.UnmarshalTo(&posix) == nil {
 				metadata["posix"] = map[string]interface{}{
-					"user_time":                    convertDuration(posix.UserTime),
-					"system_time":                  convertDuration(posix.SystemTime),
+					"user_time":                    posix.UserTime.AsDuration().Seconds(),
+					"system_time":                  posix.SystemTime.AsDuration().Seconds(),
 					"maximum_resident_set_size":    float64(posix.MaximumResidentSetSize),
 					"page_reclaims":                float64(posix.PageReclaims),
 					"page_faults":                  float64(posix.PageFaults),
@@ -240,7 +238,7 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 					"involuntary_context_switches": float64(posix.InvoluntaryContextSwitches),
 				}
 			} else if auxiliaryMetadata.UnmarshalTo(&request) == nil {
-				metadata["request"] = protoToJSONToInterface(&request)
+				metadata["request"] = buildbarutil.ProtoToJSONToInterface(&request)
 			} else {
 				typeStr := strings.TrimPrefix(auxiliaryMetadata.TypeUrl, "type.googleapis.com/")
 				unknownMetadataTypes = append(unknownMetadataTypes, typeStr)
@@ -252,59 +250,6 @@ func (cac *converter) FlattenCompletedAction(ctx context.Context, completedActio
 		}
 	}
 	return document, nil
-}
-
-func convertDigest(digest *remoteexecution.Digest) interface{} {
-	if digest == nil {
-		return nil
-	}
-	return map[string]interface{}{
-		"hash":       digest.Hash,
-		"size_bytes": float64(digest.SizeBytes),
-	}
-}
-
-func convertDuration(duration *durationpb.Duration) float64 {
-	if duration == nil {
-		return 0
-	}
-	return duration.AsDuration().Seconds()
-}
-
-func protoToJSONToInterface(m protoreflect.ProtoMessage) map[string]interface{} {
-	marshaled, err := protojson.MarshalOptions{
-		UseEnumNumbers:    false,
-		UseProtoNames:     true,
-		EmitDefaultValues: true,
-	}.Marshal(m)
-	if err != nil {
-		return map[string]interface{}{
-			"error": status.Convert(util.StatusWrap(err, "Failed to marshal")).Message(),
-		}
-	}
-	ret := map[string]interface{}{}
-	if err := json.Unmarshal(marshaled, &ret); err != nil {
-		return map[string]interface{}{
-			"error": status.Convert(util.StatusWrap(err, "Failed to unmarshal")).Message(),
-		}
-	}
-	return ret
-}
-
-func protoListToJSONToInterface[V protoreflect.ProtoMessage](m []V) []interface{} {
-	ret := make([]interface{}, len(m))
-	for i, entry := range m {
-		ret[i] = protoToJSONToInterface(entry)
-	}
-	return ret
-}
-
-func protoMapToJSONToInterface[V protoreflect.ProtoMessage](m map[string]V) map[string]interface{} {
-	ret := make(map[string]interface{}, len(m))
-	for key, value := range m {
-		ret[key] = protoToJSONToInterface(value)
-	}
-	return ret
 }
 
 func (cac *converter) getAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (
