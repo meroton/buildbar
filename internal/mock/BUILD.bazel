@@ -10,6 +10,8 @@ gomock(
         "RoundTripper",
     ],
     library = "//internal/mock/aliases",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -18,6 +20,8 @@ gomock(
     out = "blobstore.go",
     interfaces = ["BlobAccess"],
     library = "@com_github_buildbarn_bb_storage//pkg/blobstore",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -26,6 +30,8 @@ gomock(
     out = "completedaction.go",
     interfaces = ["Converter"],
     library = "//pkg/completedaction",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -34,6 +40,8 @@ gomock(
     out = "completedactionlogger.go",
     interfaces = ["CompletedActionLogger_LogCompletedActionsServer"],
     library = "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -42,6 +50,8 @@ gomock(
     out = "elasticsearch.go",
     interfaces = ["Uploader"],
     library = "//pkg/elasticsearch",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -52,6 +62,8 @@ gomock(
         "ErrorLogger",
     ],
     library = "@com_github_buildbarn_bb_storage//pkg/util",
+    mockgen_model_library = "@org_uber_go_mock//mockgen/model",
+    mockgen_tool = "@org_uber_go_mock//mockgen",
     package = "mock",
 )
 
@@ -68,14 +80,14 @@ go_library(
     importpath = "github.com/meroton/buildbar/internal/mock",
     visibility = ["//:__subpackages__"],
     deps = [
-        "@com_github_bazelbuild_remote_apis//build/bazel/remote/execution/v2:execution",
+        "@bazel_remote_apis//build/bazel/remote/execution/v2:remote_execution_go_proto",
         "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
         "@com_github_buildbarn_bb_storage//pkg/blobstore",
         "@com_github_buildbarn_bb_storage//pkg/blobstore/buffer",
         "@com_github_buildbarn_bb_storage//pkg/blobstore/slicing",
         "@com_github_buildbarn_bb_storage//pkg/digest",
-        "@com_github_golang_mock//gomock",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_uber_go_mock//gomock",
     ],
 )

@@ -10,10 +10,10 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/testutil"
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/golang/mock/gomock"
 	"github.com/meroton/buildbar/internal/mock"
 	bb_elasticsearch "github.com/meroton/buildbar/pkg/elasticsearch"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

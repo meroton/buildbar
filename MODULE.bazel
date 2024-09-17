@@ -1,48 +1,48 @@
 module(name = "com_github_meroton_buildbar")
 
-bazel_dep(name = "aspect_bazel_lib", version = "2.6.0")
-bazel_dep(name = "aspect_rules_js", version = "1.39.1")
+bazel_dep(name = "aspect_bazel_lib", version = "2.8.1")
+bazel_dep(name = "aspect_rules_js", version = "2.0.1")
+bazel_dep(name = "bazel_remote_apis")
 bazel_dep(name = "com_github_buildbarn_bb_remote_execution")
 bazel_dep(name = "com_github_buildbarn_bb_storage")
 bazel_dep(name = "com_github_buildbarn_go_xdr")
 bazel_dep(name = "gazelle", version = "0.35.0")
-bazel_dep(name = "googleapis", version = "0.0.0-20240326-1c8d509c5")
-bazel_dep(name = "protobuf", version = "23.1")
-bazel_dep(name = "rules_go", version = "0.46.0")
-bazel_dep(name = "rules_jsonnet", version = "0.5.0")
-bazel_dep(name = "rules_oci", version = "1.7.5")
-bazel_dep(name = "rules_pkg", version = "0.10.1")
-bazel_dep(name = "rules_proto", version = "6.0.0-rc2")
-bazel_dep(name = "toolchains_llvm", version = "1.0.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20240819-fe8ba054a")
+bazel_dep(name = "protobuf", version = "28.1")
+bazel_dep(name = "rules_go", version = "0.50.1")
+bazel_dep(name = "rules_jsonnet", version = "0.6.0")
+bazel_dep(name = "rules_oci", version = "1.8.0")
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+bazel_dep(name = "rules_proto", version = "6.0.2")
+bazel_dep(name = "toolchains_llvm", version = "1.1.2")
+
+git_override(
+    module_name = "bazel_remote_apis",
+    commit = "de1d77b12feb81f96909f0410991c3c966d9d8e7",
+    remote = "https://github.com/bazelbuild/remote-apis.git",
+)
 
 git_override(
     module_name = "com_github_buildbarn_bb_remote_execution",
-    commit = "ea22f37f62b885026ad9e1aa0d62deb15dbb454a",
+    commit = "fa5964b758bcedd4afb22935c8c6062212fb92ae",
     remote = "https://github.com/buildbarn/bb-remote-execution.git",
 )
 
 git_override(
     module_name = "com_github_buildbarn_bb_storage",
-    commit = "dee7e428a0bd962b192512aad8f3ff76dcc0f437",
+    commit = "a889bc06a4070e34f5b7d85073dabaa37bfc3027",
     remote = "https://github.com/buildbarn/bb-storage.git",
 )
 
 git_override(
     module_name = "com_github_buildbarn_go_xdr",
-    commit = "9cb8426d3e09e301c2b12c993e54ef795a665a92",
+    commit = "236788cf9e8948a1e8875c7dd243e2be180cdfd7",
     remote = "https://github.com/buildbarn/go-xdr.git",
 )
 
 git_override(
-    module_name = "rules_go",
-    commit = "00fe64fb1a420b1b0a959959c0c8a5c717a885a7",
-    patches = ["//:patches/rules_go/tags-manual.diff"],
-    remote = "https://github.com/bazelbuild/rules_go.git",
-)
-
-git_override(
     module_name = "gazelle",
-    commit = "f5a5c5dc90b4d6a39f0f47d770eba27c6c1c1877",
+    commit = "4d0129d7adae33e8e648d3624aff8fa8f93f375b",
     patches = [
         "//:patches/gazelle/dont-flatten-srcs.diff",
         "//:patches/gazelle/googleapis.diff",
@@ -60,6 +60,9 @@ git_override(
     remote = "https://github.com/marcohu/rules_antlr.git",
 )
 
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.23.0")
+
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
 use_repo(
@@ -68,13 +71,13 @@ use_repo(
     "com_github_bazelbuild_buildtools",
     "com_github_bazelbuild_remote_apis",
     "com_github_elastic_go_elasticsearch_v8",
-    "com_github_golang_mock",
     "com_github_kballard_go_shellquote",
     "com_github_prometheus_client_golang",
     "com_github_stretchr_testify",
     "org_golang_google_grpc",
     "org_golang_google_protobuf",
     "org_golang_x_lint",
+    "org_uber_go_mock",
 )
 
 go_deps_dev = use_extension("@gazelle//:extensions.bzl", "go_deps", dev_dependency = True)
@@ -93,19 +96,19 @@ go_deps_dev.gazelle_override(
     path = "github.com/bazelbuild/remote-apis",
 )
 go_deps_dev.module_override(
-    patches = [
-        "@com_github_buildbarn_bb_storage//:patches/com_github_golang_mock/mocks-for-funcs.diff",
-        "//:patches/com_github_golang_mock/generics.diff",
-    ],
-    path = "github.com/golang/mock",
-)
-go_deps_dev.module_override(
     patches = ["@com_github_buildbarn_bb_storage//:patches/com_github_grpc_ecosystem_go_grpc_prometheus/client-metrics-prevent-handled-twice.diff"],
     path = "github.com/grpc-ecosystem/go-grpc-prometheus",
 )
 go_deps_dev.module_override(
     patches = ["@com_github_buildbarn_bb_storage//:patches/org_golang_x_lint/generic.diff"],
     path = "golang.org/x/lint",
+)
+go_deps_dev.module_override(
+    patches = [
+        "@com_github_buildbarn_bb_storage//:patches/org_uber_go_mock/mocks-for-funcs.diff",
+        "@com_github_buildbarn_bb_remote_execution//:patches/org_uber_go_mock/generics.diff",
+    ],
+    path = "go.uber.org/mock",
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
