@@ -225,7 +225,7 @@ func TestFlattenCompletedActionFailsActionFetching(t *testing.T) {
 	t.Run("FlattenMissingActionInCAS", func(t *testing.T) {
 		cas.EXPECT().Get(ctx, actionDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
 
-		document, err := completedaction.NewConverter(cas, 10240).
+		document, err := completedaction.NewCompletedActionConverter(cas, 10240).
 			FlattenCompletedAction(ctx, completedAction)
 		require.Nil(t, err)
 		require.NotNil(t, document)
@@ -238,7 +238,7 @@ func TestFlattenCompletedActionFailsActionFetching(t *testing.T) {
 		cas.EXPECT().Get(ctx, actionDigest).Return(buffer.NewProtoBufferFromProto(action, buffer.UserProvided))
 		cas.EXPECT().Get(ctx, commandDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
 
-		document, err := completedaction.NewConverter(cas, 10240).
+		document, err := completedaction.NewCompletedActionConverter(cas, 10240).
 			FlattenCompletedAction(ctx, completedAction)
 		require.Nil(t, err)
 		require.NotNil(t, document)
@@ -262,7 +262,7 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 	cas.EXPECT().Get(ctx, actionDigest).Return(buffer.NewProtoBufferFromProto(action, buffer.UserProvided))
 	cas.EXPECT().Get(ctx, commandDigest).Return(buffer.NewProtoBufferFromProto(command, buffer.UserProvided))
 
-	document, err := completedaction.NewConverter(cas, 10240).
+	document, err := completedaction.NewCompletedActionConverter(cas, 10240).
 		FlattenCompletedAction(ctx, completedAction)
 	require.Nil(t, err)
 	require.NotNil(t, document)
