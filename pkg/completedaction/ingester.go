@@ -35,13 +35,13 @@ var (
 // CompletedAction metadata.
 type Ingester struct {
 	uploader  elasticsearch.Uploader
-	converter Converter
+	converter CompletedActionConverter
 }
 
 // NewIngester creates a new Ingester that uploads CompletedActions to Elasticsearch.
 func NewIngester(
 	uploader elasticsearch.Uploader,
-	converter Converter,
+	converter CompletedActionConverter,
 ) *Ingester {
 	ingesterPrometheusMetrics.Do(func() {
 		prometheus.MustRegister(ingesterActionsReceived)

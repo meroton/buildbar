@@ -66,7 +66,7 @@ func main() {
 				clock.SystemClock,
 				util.DefaultErrorLogger,
 			),
-			completedaction.NewConverter(
+			completedaction.NewCompletedActionConverter(
 				contentAddressableStorage.BlobAccess,
 				int(configuration.MaximumMessageSizeBytes),
 			),
