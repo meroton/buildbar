@@ -30,4 +30,18 @@ go_test(
         "converter_test.go",
         "ingester_test.go",
     ],
+    deps = [
+        ":bazelevents",
+        "//internal/mock",
+        "//third_party/bazel:build_event_stream",
+        "@com_github_buildbarn_bb_storage//pkg/digest",
+        "@com_github_buildbarn_bb_storage//pkg/testutil",
+        "@com_github_buildbarn_bb_storage//pkg/util",
+        "@com_github_stretchr_testify//require",
+        "@org_golang_google_genproto//googleapis/devtools/build/v1:build",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_uber_go_mock//gomock",
+    ],
 )

@@ -488,5 +488,30 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 	fullExpectedJson, err := json.Marshal(expected)
 	require.Nil(t, err)
 	require.Equal(t, string(fullExpectedJson), string(documentJson))
+
+
+		// The BuildMetadata event should arrive as one of the first events.
+		t.Run("IgnoreBuildMetadataAfterSomeEvents", func(t *testing.T) {
+			ingestContext := context.WithValue(ctx, "key", "value")
+			converter.EXPECT().ExtractInterestingData(ingestContext, eventTime1, bazelEventStarted).Return(startedDocuments, nil)
+			converter.EXPECT().ExtractInterestingData(ingestContext, eventTime2, bazelEventMetadata).Return(metadataDocuments, nil)
+			converter.EXPECT().ExtractInterestingData(ingestContext, eventTime2, bazelEventFinished).Return(finishedDocuments, nil)
+			uploader.EXPECT().Put(ingestContext, "my_invocation_id-started", startedDocuments["started"]).Return(nil)
+			uploader.EXPECT().Put(ingestContext, "my_invocation_id-metadata", metadataDocuments["metadata"]).Return(nil)
+			uploader.EXPECT().Put(ingestContext, "my_invocation_id-finished", finishedDocuments["finished"]).Return(nil)
+
+			ingester := bazelevents.NewIngester(converterFactory, uploader, errorLogger)
+			stream, err := ingester.PublishBazelEvents(ingestContext, digest.MustNewInstanceName("my-instance"), &build.StreamId{
+				InvocationId: "my_invocation_id",
+			})
+			require.NoError(t, err)
+			require.NoError(t, stream.Send(eventTime1, bazelEventStarted))
+			require.NoError(t, stream.Send(eventTime2, bazelEventMetadata))
+			require.NoError(t, stream.Send(eventTime2, bazelEventFinished))
+			require.NoError(t, stream.Recv())
+			require.NoError(t, stream.Recv())
+			require.NoError(t, stream.Recv())
+		})
+
 }
 */

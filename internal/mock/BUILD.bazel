@@ -29,6 +29,7 @@ gomock(
     name = "bazelevents",
     out = "bazelevents.go",
     interfaces = [
+        "BazelEventConverter",
         "BazelEventServer",
         "BazelEventStreamClient",
     ],
