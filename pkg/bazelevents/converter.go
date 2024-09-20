@@ -52,10 +52,16 @@ type bazelEventConverter struct {
 func NewBazelEventConverter(errorLogger util.ErrorLogger) BazelEventConverter {
 	return &bazelEventConverter{
 		errorLogger: errorLogger,
+
+		accumulatedDocuments: map[string]ConvertedDocument{},
+		// No build metadata received yet.
+		buildMetadata: nil,
 		configurations: map[string]platformInfo{
 			// build_event_stream.ConfigurationId describes a special "none" id.
 			"none": nonePlatform,
 		},
+		// No build start time received yet.
+		buildStartTime: nil,
 	}
 }
 
@@ -250,7 +256,7 @@ func (bec *bazelEventConverter) publishFetch(eventTime *timestamppb.Timestamp, i
 		"success": payload.Success,
 	}
 	if eventTime.IsValid() && bec.buildStartTime.IsValid() {
-		fetch["duration_from_start"] = eventTime.AsTime().Sub(bec.buildStartTime.AsTime()).Seconds
+		fetch["duration_from_start"] = eventTime.AsTime().Sub(bec.buildStartTime.AsTime()).Seconds()
 	}
 	digestBytes := md5.Sum([]byte(id.Url))
 	digestHex := hex.EncodeToString(digestBytes[:])
@@ -337,7 +343,7 @@ func (bec *bazelEventConverter) publishTargetCompleted(id *buildeventstream.Buil
 				"success":            payload.Success,
 				"output_group_names": outputGroupNames,
 				"tags":               payload.Tag,
-				"test_timeout":       payload.TestTimeout.AsDuration().Seconds,
+				"test_timeout":       payload.TestTimeout.AsDuration().Seconds(),
 				"failure_message":    payload.FailureDetail.GetMessage(),
 				// TODO: Add the failure detail enums.
 			},
@@ -354,7 +360,7 @@ func (bec *bazelEventConverter) publishTestResult(id *buildeventstream.BuildEven
 		"status":             payload.Status.String(),
 		"cached_locally":     payload.CachedLocally,
 		"start_time":         payload.TestAttemptStart,
-		"duration":           payload.TestAttemptDuration.AsDuration().Seconds,
+		"duration":           payload.TestAttemptDuration.AsDuration().Seconds(),
 		"execution_strategy": payload.ExecutionInfo.GetStrategy(),
 		"remote_cache_hit":   payload.ExecutionInfo.GetCachedRemotely(),
 		"exit_code":          payload.ExecutionInfo.GetStrategy(),
@@ -386,7 +392,7 @@ func (bec *bazelEventConverter) publishTestSummary(id *buildeventstream.BuildEve
 			"attempt_count":            payload.AttemptCount,
 			"shard_count":              payload.ShardCount,
 			"total_num_cached_actions": payload.TotalNumCached,
-			"total_run_duration":       payload.TotalRunDuration.AsDuration().Seconds,
+			"total_run_duration":       payload.TotalRunDuration.AsDuration().Seconds(),
 		},
 	}
 	return map[string]ConvertedDocument{
@@ -439,8 +445,8 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 			"actions_executed":  pbActionData.ActionsExecuted,
 			"first_started":     float64(pbActionData.FirstStartedMs) / 1000.0,
 			"last_ended":        float64(pbActionData.LastEndedMs) / 1000.0,
-			"total_system_time": pbActionData.SystemTime.AsDuration().Seconds,
-			"total_user_time":   pbActionData.UserTime.AsDuration().Seconds,
+			"total_system_time": pbActionData.SystemTime.AsDuration().Seconds(),
+			"total_user_time":   pbActionData.UserTime.AsDuration().Seconds(),
 		}
 		actionDataMap[pbActionData.Mnemonic] = actionData
 		// TODO: Remove unless used in the dashboards.
