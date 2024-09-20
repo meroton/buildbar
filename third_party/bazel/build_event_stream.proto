@@ -291,10 +291,16 @@ message BuildEventId {
 message Progress {
   // The next chunk of stdout that bazel produced since the last progress event
   // or the beginning of the build.
+  // Consumers that need to reason about the relative order of stdout and stderr
+  // can assume that stderr has been emitted before stdout if both are present,
+  // on a best-effort basis.
   string stdout = 1;
 
   // The next chunk of stderr that bazel produced since the last progress event
   // or the beginning of the build.
+  // Consumers that need to reason about the relative order of stdout and stderr
+  // can assume that stderr has been emitted before stdout if both are present,
+  // on a best-effort basis.
   string stderr = 2;
 }
 
@@ -583,7 +589,11 @@ message ActionExecuted {
   // End of action execution, after all attempted execution completes.
   google.protobuf.Timestamp end_time = 13;
 
-  // Additional details about action execution supplied by any/all strategies.
+  // Additional details about action execution supplied by strategies. Bazel
+  // options will determine which strategy details are included when multiple
+  // strategies are involved in a single action's execution.
+  //
+  // The default type will be `tools.proto.SpawnExec` found in `spawn.proto`.
   repeated google.protobuf.Any strategy_details = 14;
 }
 
@@ -601,6 +611,10 @@ message OutputGroup {
   // Indicates that one or more of the output group's files were not built
   // successfully (the generating action failed).
   bool incomplete = 4;
+
+  // Inlined files that belong to this output group, requested via
+  // --build_event_inline_output_groups.
+  repeated File inline_files = 5;
 }
 
 // Payload of the event indicating the completion of a target. The target is
@@ -923,6 +937,9 @@ message BuildMetrics {
       // This is only set if all the actions reported a time
       google.protobuf.Duration system_time = 5;
       google.protobuf.Duration user_time = 6;
+
+      // The total number of actions of this type registered during the build.
+      int64 actions_created = 7;
     }
     // Contains the top N actions by number of actions executed.
     repeated ActionData action_data = 4;
@@ -1023,8 +1040,13 @@ message BuildMetrics {
     int64 analysis_phase_time_in_ms = 3;
     // The elapsed wall time in milliseconds during the execution phase.
     // When analysis and execution phases are interleaved, this measures the
-    // elapsed time from the first action execution to the last.
+    // elapsed time from the first action execution (excluding workspace status
+    // actions) to the last.
     int64 execution_phase_time_in_ms = 4;
+
+    // The elapsed wall time in milliseconds until the first action execution
+    // started (excluding workspace status actions).
+    int64 actions_execution_start_in_ms = 5;
   }
   TimingMetrics timing_metrics = 5;
 
@@ -1069,6 +1091,14 @@ message BuildMetrics {
 
   ArtifactMetrics artifact_metrics = 7;
 
+  // Data about the evaluation of Skyfunctions.
+  message EvaluationStat {
+    // Name of the Skyfunction.
+    string skyfunction_name = 1;
+    // How many times a given operation was carried out on a Skyfunction.
+    int64 count = 2;
+  }
+
   // Information about the size and shape of the build graph. Some fields may
   // not be populated if Bazel was able to skip steps due to caching.
   message BuildGraphMetrics {
@@ -1108,6 +1138,61 @@ message BuildMetrics {
     // settings or with Skybuild, and may overestimate if there are nodes from
     // prior evaluations still in the cache.
     int32 post_invocation_skyframe_node_count = 4;
+    // Number of SkyValues that were dirtied during the build. Dirtied nodes are
+    // those that transitively depend on a node that changed by itself (e.g. one
+    // representing a file in the file system)
+    repeated EvaluationStat dirtied_values = 10;
+    // Number of SkyValues that changed by themselves. For example, when a file
+    // on the file system changes, the SkyValue representing it will change.
+    repeated EvaluationStat changed_values = 11;
+    // Number of SkyValues that were built. This means that they were evaluated
+    // and were found to have changed from their previous version.
+    repeated EvaluationStat built_values = 12;
+    // Number of SkyValues that were evaluated and found clean, i.e. equal to
+    // their previous version.
+    repeated EvaluationStat cleaned_values = 13;
+    // Number of evaluations to build SkyValues. This includes restarted
+    // evaluations, which means there can be multiple evaluations per built
+    // SkyValue. Subtract built_values from this number to get the number of
+    // restarted evaluations.
+    repeated EvaluationStat evaluated_values = 17;
+
+    // For SkyKeys in 'done values' where the SkyValue is of type
+    // RuleConfiguredTargetValue, we pull those out separately and report the
+    // ruleClass and action count.
+    message RuleClassCount {
+      // Unique key for the rule class.
+      string key = 1;
+
+      // String name of the rule_class (not guaranteed unique)
+      string rule_class = 2;
+
+      // how many rule instances of this type were seen.
+      uint64 count = 3;
+
+      // how many actions were created by this rule class.
+      uint64 action_count = 4;
+    }
+    repeated RuleClassCount rule_class = 14;
+
+    // For SkyKeys whose function name is ASPECT break out that information
+    message AspectCount {
+      // Unique key for Aspect.
+      string key = 1;
+
+      // usually the same as above, but can differ in some cases.
+      string aspect_name = 2;
+
+      // number of aspects created of this type.
+      uint64 count = 3;
+
+      // number of actions created by aspects of this type.
+      uint64 action_count = 4;
+    }
+    repeated AspectCount aspect = 15;
+
+    // Removed due to overlap with EvaluationStat
+    reserved 16;
   }
 
   BuildGraphMetrics build_graph_metrics = 8;
@@ -1127,18 +1212,45 @@ message BuildMetrics {
     bool is_multiplex = 4;
     // Using worker sandbox file system or not.
     bool is_sandbox = 5;
-    // Shows is worker stats measured at the end of invocation.
+    // TODO(b/300067854): Deprecate since all worker metrics should have their
+    // WorkerStats set.
     bool is_measurable = 6;
     // Hash value of worker key. Needed to distinguish worker pools with same
     // menmonic but with different worker keys.
     int64 worker_key_hash = 9;
 
+    WorkerStatus worker_status = 10;
+
+    enum WorkerStatus {
+      // Used to indicate a worker instance where the process has not been
+      // created yet. In reality this isn't logged, but leaving this here as a
+      // possible option in the future.
+      NOT_STARTED = 0;
+      ALIVE = 1;
+      KILLED_DUE_TO_MEMORY_PRESSURE = 2;
+      // Indicates that the worker process was killed due to a reason unknown to
+      // Bazel at the point of measurement; if a known cause (below) comes along
+      // later on, this field will be updated.
+      KILLED_UNKNOWN = 3;
+      KILLED_DUE_TO_INTERRUPTED_EXCEPTION = 4;
+      KILLED_DUE_TO_IO_EXCEPTION = 5;
+      KILLED_DUE_TO_USER_EXEC_EXCEPTION = 6;
+    }
+
+    optional failure_details.Worker.Code code = 12;
+
+    int64 actions_executed = 11;
+
+    int64 prior_actions_executed = 13;
+
     // Information collected from worker at some point.
     message WorkerStats {
       // Epoch unix time of collection of metrics.
       int64 collect_time_in_ms = 1;
-      // RSS size of worker process.
+      // Memory usage of worker process at the end of the build.
       int32 worker_memory_in_kb = 2;
+      // Memory usage of the worker process prior to the invocation.
+      int32 prior_worker_memory_in_kb = 4;
       // Epoch unix time of last action started on specific worker.
       int64 last_action_start_time_in_ms = 3;
     }
@@ -1191,14 +1303,46 @@ message BuildMetrics {
       string mnemonic = 2;
       // Number of workers created during a build.
       int64 created_count = 3;
-      // Number of workers destroyed during a build.
+      // Number of workers destroyed during a build (sum of all workers
+      // destroyed by eviction, UserExecException, IoException,
+      // InterruptedException and unknown reasons below).
       int64 destroyed_count = 4;
       // Number of workers evicted during a build.
       int64 evicted_count = 5;
+      // Number of workers destroyed due to UserExecExceptions.
+      int64 user_exec_exception_destroyed_count = 6;
+      // Number of workers destroyed due to IoExceptions.
+      int64 io_exception_destroyed_count = 7;
+      // Number of workers destroyed due to InterruptedExceptions.
+      int64 interrupted_exception_destroyed_count = 8;
+      // Number of workers destroyed due to an unknown reason.
+      int64 unknown_destroyed_count = 9;
+      // Number of workers alive at the end of the build.
+      int64 alive_count = 10;
     }
   }
 
   WorkerPoolMetrics worker_pool_metrics = 11;
+
+  // Information about dynamic execution.
+  message DynamicExecutionMetrics {
+    message RaceStatistics {
+      // Mnemonic of the action.
+      string mnemonic = 1;
+      // Name of runner of local branch.
+      string local_runner = 2;
+      // Name of runner of remote branch.
+      string remote_runner = 3;
+      // Number of wins of local branch in race.
+      int32 local_wins = 4;
+      // Number of wins of remote branch in race.
+      int32 remote_wins = 5;
+    }
+    // Race statistics grouped by mnemonic, local_name, remote_name.
+    repeated RaceStatistics race_statistics = 1;
+  }
+
+  DynamicExecutionMetrics dynamic_execution_metrics = 12;
 }
 
 // Event providing additional statistics/logs after completion of the build.
@@ -1239,9 +1383,8 @@ message ConvenienceSymlink {
   // The operation we are performing on the symlink.
   Action action = 2;
 
-  // If action is CREATE, this is the target path that the symlink should point
-  // to. If the path points underneath the output base, it is relative to the
-  // output base; otherwise it is absolute.
+  // If action is CREATE, this is the target path (relative to the output base)
+  // that the symlink should point to.
   //
   // If action is DELETE, this field is not set.
   string target = 3;

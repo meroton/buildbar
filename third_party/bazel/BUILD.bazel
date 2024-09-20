@@ -18,6 +18,7 @@ proto_library(
         "failure_details.proto",
         "invocation_policy.proto",
         "option_filters.proto",
+        "strategy_policy.proto",
     ],
     import_prefix = "src/main/protobuf/",
     strip_import_prefix = "/third_party/bazel/",
@@ -96,6 +97,7 @@ SRC_MAIN_PROTOBUF_FILES = [
     "failure_details",
     "invocation_policy",
     "option_filters",
+    "strategy_policy",
 ]
 
 OTHER_FILES = [
