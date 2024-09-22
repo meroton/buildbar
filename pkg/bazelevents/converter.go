@@ -447,6 +447,7 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 			"last_ended":        float64(pbActionData.LastEndedMs) / 1000.0,
 			"total_system_time": pbActionData.SystemTime.AsDuration().Seconds(),
 			"total_user_time":   pbActionData.UserTime.AsDuration().Seconds(),
+			"actions_created":   pbActionData.ActionsCreated,
 		}
 		actionDataMap[pbActionData.Mnemonic] = actionData
 		// TODO: Remove unless used in the dashboards.
@@ -506,10 +507,11 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 			"targets_configured_not_including_aspects": float64(payload.TargetMetrics.GetTargetsConfiguredNotIncludingAspects()),
 			"packages_loaded":                          float64(payload.PackageMetrics.GetPackagesLoaded()),
 			// TODO: Is it possible to create dashboards for PackageLoadMetrics?
-			"cpu_time":             float64(payload.TimingMetrics.GetCpuTimeInMs()) / 1000.0,
-			"wall_time":            float64(payload.TimingMetrics.GetWallTimeInMs()) / 1000.0,
-			"analysis_phase_time":  float64(payload.TimingMetrics.GetAnalysisPhaseTimeInMs()) / 1000.0,
-			"execution_phase_time": float64(payload.TimingMetrics.GetExecutionPhaseTimeInMs()) / 1000.0,
+			"cpu_time":                     float64(payload.TimingMetrics.GetCpuTimeInMs()) / 1000.0,
+			"wall_time":                    float64(payload.TimingMetrics.GetWallTimeInMs()) / 1000.0,
+			"analysis_phase_start_time":    float64(payload.TimingMetrics.GetAnalysisPhaseTimeInMs()) / 1000.0,
+			"execution_phase_start_time":   float64(payload.TimingMetrics.GetExecutionPhaseTimeInMs()) / 1000.0,
+			"actions_execution_start_time": float64(payload.TimingMetrics.GetActionExecutionStartInMs()) / 1000.0,
 			"cumulative_server_metrics": map[string]interface{}{
 				"num_analyses": payload.CumulativeMetrics.GetNumAnalyses(),
 				"num_builds":   payload.CumulativeMetrics.GetNumBuilds(),
