@@ -16,14 +16,18 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// MaxAccumulatedDocuments is the maximum number of documents that can be
+// accumulated without build metadata.
 const MaxAccumulatedDocuments = 25
 
-type ConvertedDocument map[string]interface{}
+// ConvertedDocuments is a map from document id suffix to
+// the content of the document.
+type ConvertedDocuments map[string]interface{}
 
 // BazelEventConverter converts a CompletedAction into a format that is
 // suitable for Elasticsearch.
 type BazelEventConverter interface {
-	ExtractInterestingData(ctx context.Context, eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) (map[string]ConvertedDocument, error)
+	ExtractInterestingData(ctx context.Context, eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) (map[string]ConvertedDocuments, error)
 }
 
 type platformInfo map[string]string
@@ -43,7 +47,7 @@ var unknownPlatform = platformInfo{
 type bazelEventConverter struct {
 	errorLogger util.ErrorLogger
 
-	accumulatedDocuments map[string]ConvertedDocument
+	accumulatedDocuments map[string]ConvertedDocuments
 	buildMetadata        map[string]string
 	configurations       map[string]platformInfo
 	buildStartTime       *timestamppb.Timestamp
@@ -55,7 +59,7 @@ func NewBazelEventConverter(errorLogger util.ErrorLogger) BazelEventConverter {
 	return &bazelEventConverter{
 		errorLogger: errorLogger,
 
-		accumulatedDocuments: map[string]ConvertedDocument{},
+		accumulatedDocuments: map[string]ConvertedDocuments{},
 		// No build metadata received yet.
 		buildMetadata: nil,
 		configurations: map[string]platformInfo{
@@ -74,8 +78,8 @@ func (bec *bazelEventConverter) getPlatformInfo(configurationID string) platform
 	return unknownPlatform
 }
 
-func (bec *bazelEventConverter) ExtractInterestingData(ctx context.Context, eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) (map[string]ConvertedDocument, error) {
-	var documents map[string]ConvertedDocument
+func (bec *bazelEventConverter) ExtractInterestingData(ctx context.Context, eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) (map[string]ConvertedDocuments, error) {
+	var documents map[string]ConvertedDocuments
 
 	// TODO: FRME save documents until metadata has been collected.
 
@@ -165,7 +169,7 @@ func (bec *bazelEventConverter) ExtractInterestingData(ctx context.Context, even
 		// TODO: May contain secrets on the command line or in the environment, log it?
 	}
 
-	fullDocuments := map[string]ConvertedDocument{}
+	fullDocuments := map[string]ConvertedDocuments{}
 	for suffix, document := range documents {
 		fullDocument := map[string]interface{}{
 			"event_time": buildbarutil.ProtoValueToJSONToInterface(eventTime),
@@ -207,9 +211,9 @@ func (bec *bazelEventConverter) ExtractInterestingData(ctx context.Context, even
 	return fullDocuments, nil
 }
 
-func (bec *bazelEventConverter) publishStartedEvent(payload *buildeventstream.BuildStarted) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishStartedEvent(payload *buildeventstream.BuildStarted) map[string]ConvertedDocuments {
 	bec.buildStartTime = payload.StartTime
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"started": {
 			"type":                "Started",
 			"uuid":                payload.Uuid,
@@ -223,7 +227,7 @@ func (bec *bazelEventConverter) publishStartedEvent(payload *buildeventstream.Bu
 	}
 }
 
-func (bec *bazelEventConverter) publishOptionsParsed(payload *buildeventstream.OptionsParsed) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishOptionsParsed(payload *buildeventstream.OptionsParsed) map[string]ConvertedDocuments {
 	options := map[string]interface{}{
 		"startup_options_list":          payload.StartupOptions,
 		"startup_options":               shellquote.Join(payload.StartupOptions...),
@@ -236,7 +240,7 @@ func (bec *bazelEventConverter) publishOptionsParsed(payload *buildeventstream.O
 		"invocation_policy":             buildbarutil.ProtoToJSONToInterface(payload.InvocationPolicy),
 		"tool_tag":                      payload.ToolTag,
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"command-line": {
 			"type":    "OptionsParsed",
 			"options": options,
@@ -244,12 +248,12 @@ func (bec *bazelEventConverter) publishOptionsParsed(payload *buildeventstream.O
 	}
 }
 
-func (bec *bazelEventConverter) publishWorkspaceStatus(payload *buildeventstream.WorkspaceStatus) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishWorkspaceStatus(payload *buildeventstream.WorkspaceStatus) map[string]ConvertedDocuments {
 	workspaceStatus := map[string]interface{}{}
 	for _, item := range payload.Item {
 		workspaceStatus[item.Key] = item.Value
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"workspace-status": {
 			"type":             "WorkspaceStatus",
 			"workspace_status": workspaceStatus,
@@ -257,7 +261,7 @@ func (bec *bazelEventConverter) publishWorkspaceStatus(payload *buildeventstream
 	}
 }
 
-func (bec *bazelEventConverter) publishFetch(eventTime *timestamppb.Timestamp, id *buildeventstream.BuildEventId_FetchId, payload *buildeventstream.Fetch) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishFetch(eventTime *timestamppb.Timestamp, id *buildeventstream.BuildEventId_FetchId, payload *buildeventstream.Fetch) map[string]ConvertedDocuments {
 	fetch := map[string]interface{}{
 		"url":     id.Url,
 		"success": payload.Success,
@@ -267,7 +271,7 @@ func (bec *bazelEventConverter) publishFetch(eventTime *timestamppb.Timestamp, i
 	}
 	digestBytes := md5.Sum([]byte(id.Url))
 	digestHex := hex.EncodeToString(digestBytes[:])
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"fetch-" + digestHex: {
 			"type":  "Fetch",
 			"fetch": fetch,
@@ -275,7 +279,7 @@ func (bec *bazelEventConverter) publishFetch(eventTime *timestamppb.Timestamp, i
 	}
 }
 
-func (bec *bazelEventConverter) collectAndPublishConfiguration(id *buildeventstream.BuildEventId_ConfigurationId, payload *buildeventstream.Configuration) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) collectAndPublishConfiguration(id *buildeventstream.BuildEventId_ConfigurationId, payload *buildeventstream.Configuration) map[string]ConvertedDocuments {
 	var platformType string
 	if payload.IsTool {
 		platformType = "exec"
@@ -288,7 +292,7 @@ func (bec *bazelEventConverter) collectAndPublishConfiguration(id *buildeventstr
 		"type":     platformType,
 	}
 	bec.configurations[id.Id] = platformInfo
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"configuration-" + id.Id: {
 			"type": "Configuration",
 			"configuration": map[string]interface{}{
@@ -301,7 +305,7 @@ func (bec *bazelEventConverter) collectAndPublishConfiguration(id *buildeventstr
 	}
 }
 
-func (bec *bazelEventConverter) publishFailedAction(id *buildeventstream.BuildEventId_ActionCompletedId, payload *buildeventstream.ActionExecuted) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishFailedAction(id *buildeventstream.BuildEventId_ActionCompletedId, payload *buildeventstream.ActionExecuted) map[string]ConvertedDocuments {
 	if !payload.Success {
 		action := map[string]interface{}{
 			// "success":        payload.Success,
@@ -317,7 +321,7 @@ func (bec *bazelEventConverter) publishFailedAction(id *buildeventstream.BuildEv
 			action["duration"] = payload.EndTime.AsTime().Sub(
 				payload.StartTime.AsTime()).Seconds()
 		}
-		return map[string]ConvertedDocument{
+		return map[string]ConvertedDocuments{
 			"action-completed-" + id.PrimaryOutput: {
 				"type":     "FailedAction",
 				"label":    id.Label,
@@ -329,7 +333,7 @@ func (bec *bazelEventConverter) publishFailedAction(id *buildeventstream.BuildEv
 	return nil
 }
 
-func (bec *bazelEventConverter) publishTargetCompleted(id *buildeventstream.BuildEventId_TargetCompletedId, payload *buildeventstream.TargetComplete) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishTargetCompleted(id *buildeventstream.BuildEventId_TargetCompletedId, payload *buildeventstream.TargetComplete) map[string]ConvertedDocuments {
 	// TODO: List first few filed per output group, requires collection of file sets.
 	// outputGroups := map[string]interface{}
 	outputGroupNames := []string{}
@@ -340,7 +344,7 @@ func (bec *bazelEventConverter) publishTargetCompleted(id *buildeventstream.Buil
 	if id.Aspect != "" {
 		docID += "-" + id.Aspect
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		docID: {
 			"type":     "TargetCompleted",
 			"label":    id.Label,
@@ -358,7 +362,7 @@ func (bec *bazelEventConverter) publishTargetCompleted(id *buildeventstream.Buil
 	}
 }
 
-func (bec *bazelEventConverter) publishTestResult(id *buildeventstream.BuildEventId_TestResultId, payload *buildeventstream.TestResult) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishTestResult(id *buildeventstream.BuildEventId_TestResultId, payload *buildeventstream.TestResult) map[string]ConvertedDocuments {
 	testResult := map[string]interface{}{
 		"run":     id.Run,
 		"shard":   id.Shard,
@@ -378,7 +382,7 @@ func (bec *bazelEventConverter) publishTestResult(id *buildeventstream.BuildEven
 			payload.TestAttemptDuration.AsDuration())
 	}
 	docID := fmt.Sprintf("%s-%s-%d-%d-%d", id.Label, id.Configuration.GetId(), id.Run, id.Shard, id.Attempt)
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		docID: {
 			"type":        "TestResult",
 			"label":       id.Label,
@@ -388,7 +392,7 @@ func (bec *bazelEventConverter) publishTestResult(id *buildeventstream.BuildEven
 	}
 }
 
-func (bec *bazelEventConverter) publishTestSummary(id *buildeventstream.BuildEventId_TestSummaryId, payload *buildeventstream.TestSummary) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishTestSummary(id *buildeventstream.BuildEventId_TestSummaryId, payload *buildeventstream.TestSummary) map[string]ConvertedDocuments {
 	document := map[string]interface{}{
 		"type":     "TestSummary",
 		"label":    id.Label,
@@ -402,12 +406,12 @@ func (bec *bazelEventConverter) publishTestSummary(id *buildeventstream.BuildEve
 			"total_run_duration":       payload.TotalRunDuration.AsDuration().Seconds(),
 		},
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		id.Label + "-" + id.Configuration.GetId(): document,
 	}
 }
 
-func (bec *bazelEventConverter) publishTargetSummary(id *buildeventstream.BuildEventId_TargetSummaryId, payload *buildeventstream.TargetSummary) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishTargetSummary(id *buildeventstream.BuildEventId_TargetSummaryId, payload *buildeventstream.TargetSummary) map[string]ConvertedDocuments {
 	document := map[string]interface{}{
 		"type":     "TargetSummary",
 		"label":    id.Label,
@@ -417,12 +421,12 @@ func (bec *bazelEventConverter) publishTargetSummary(id *buildeventstream.BuildE
 			"overall_test_status":   payload.OverallTestStatus.String(),
 		},
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		id.Label + "-" + id.Configuration.GetId(): document,
 	}
 }
 
-func (bec *bazelEventConverter) publishBuildFinished(payload *buildeventstream.BuildFinished) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) publishBuildFinished(payload *buildeventstream.BuildFinished) map[string]ConvertedDocuments {
 	finished := map[string]interface{}{
 		"exit_code":       payload.ExitCode.GetCode(),
 		"exit_code_name":  payload.ExitCode.GetName(),
@@ -434,7 +438,7 @@ func (bec *bazelEventConverter) publishBuildFinished(payload *buildeventstream.B
 		duration := payload.FinishTime.AsTime().Sub(bec.buildStartTime.AsTime())
 		finished["build_duration"] = duration.Seconds()
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"finished": {
 			"type":     "BuildFinished",
 			"finished": finished,
@@ -442,8 +446,8 @@ func (bec *bazelEventConverter) publishBuildFinished(payload *buildeventstream.B
 	}
 }
 
-func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.BuildMetrics) map[string]ConvertedDocument {
-	documents := map[string]ConvertedDocument{}
+func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.BuildMetrics) map[string]ConvertedDocuments {
+	documents := map[string]ConvertedDocuments{}
 
 	actionDataMap := map[string]interface{}{}
 	for _, pbActionData := range payload.ActionSummary.GetActionData() {
@@ -561,14 +565,14 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 	return documents
 }
 
-func (bec *bazelEventConverter) collectAndPublishBuildMetadata(payload *buildeventstream.BuildMetadata) map[string]ConvertedDocument {
+func (bec *bazelEventConverter) collectAndPublishBuildMetadata(payload *buildeventstream.BuildMetadata) map[string]ConvertedDocuments {
 	// Make sure bec.buildMetadata is non-nil.
 	if payload.Metadata == nil {
 		bec.buildMetadata = map[string]string{}
 	} else {
 		bec.buildMetadata = payload.Metadata
 	}
-	return map[string]ConvertedDocument{
+	return map[string]ConvertedDocuments{
 		"build-metadata": {
 			"type": "BuildMetadata",
 		},

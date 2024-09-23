@@ -84,12 +84,12 @@ func TestBazelEventsIngester(t *testing.T) {
 		},
 	}
 
-	startedDocuments := map[string]bazelevents.ConvertedDocument{
+	startedDocuments := map[string]bazelevents.ConvertedDocuments{
 		"started": {
 			"key": "value",
 		},
 	}
-	finishedDocuments := map[string]bazelevents.ConvertedDocument{
+	finishedDocuments := map[string]bazelevents.ConvertedDocuments{
 		"finished": {
 			"something": true,
 		},
