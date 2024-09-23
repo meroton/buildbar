@@ -9,6 +9,7 @@ import (
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/meroton/buildbar/pkg/buildevents"
+	be_configuration "github.com/meroton/buildbar/pkg/buildevents/configuration"
 	"github.com/meroton/buildbar/proto/configuration/bb_build_event_service"
 	build_pb "google.golang.org/genproto/googleapis/devtools/build/v1"
 
@@ -34,7 +35,7 @@ func main() {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
-		receiver, err := buildevents.NewBuildEventsServerFromConfiguration(ctx, configuration.Receiver, grpcClientFactory)
+		receiver, err := be_configuration.NewBuildEventsServerFromConfiguration(ctx, configuration.Receiver, grpcClientFactory)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create receiver")
 		}

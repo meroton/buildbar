@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -36,7 +35,7 @@ func (bes *bufferedServer) PublishBuildToolEventStream(ctx context.Context) (Bui
 type bufferedBuildToolEventStreamClient struct {
 	backend BuildToolEventStreamClient
 	// requestBuffer is never closed.
-	requestBuffer chan *build.PublishBuildToolEventStreamRequest
+	requestBuffer chan *BufferedPublishBuildToolEventStreamRequest
 	lock          sync.Mutex
 	sendError     error
 }
@@ -44,7 +43,7 @@ type bufferedBuildToolEventStreamClient struct {
 func newBufferedBuildToolEventStreamClient(ctx context.Context, backend BuildToolEventStreamClient, bufferSize int) BuildToolEventStreamClient {
 	ret := &bufferedBuildToolEventStreamClient{
 		backend:       backend,
-		requestBuffer: make(chan *build.PublishBuildToolEventStreamRequest, bufferSize-1),
+		requestBuffer: make(chan *BufferedPublishBuildToolEventStreamRequest, bufferSize-1),
 		lock:          sync.Mutex{},
 		sendError:     nil,
 	}
@@ -71,7 +70,7 @@ func newBufferedBuildToolEventStreamClient(ctx context.Context, backend BuildToo
 	return ret
 }
 
-func (s *bufferedBuildToolEventStreamClient) Send(req *build.PublishBuildToolEventStreamRequest) error {
+func (s *bufferedBuildToolEventStreamClient) Send(req *BufferedPublishBuildToolEventStreamRequest) error {
 	s.lock.Lock()
 	err := s.sendError
 	s.lock.Unlock()

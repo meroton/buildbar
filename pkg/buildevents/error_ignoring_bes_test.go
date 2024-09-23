@@ -48,7 +48,7 @@ func TestErrorIgnoringBuildEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		request := &build.PublishBuildToolEventStreamRequest{}
+		request := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 		streamBackend.EXPECT().Send(request).Return(nil)
 		err = stream.Send(request)
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestErrorIgnoringBuildEventServer(t *testing.T) {
 
 		responses := make(chan struct{}, 10)
 		backendRecvCalled := make(chan struct{}, 10)
-		request := &build.PublishBuildToolEventStreamRequest{}
+		request := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 		streamBackend.EXPECT().Send(request).Return(nil).Times(3)
 		streamBackend.EXPECT().Recv().DoAndReturn(func() error {
 			backendRecvCalled <- struct{}{}
@@ -120,7 +120,7 @@ func TestErrorIgnoringBuildEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		request := &build.PublishBuildToolEventStreamRequest{}
+		request := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 		err = stream.Send(request)
 		require.NoError(t, err)
 
@@ -140,7 +140,7 @@ func TestErrorIgnoringBuildEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		request := &build.PublishBuildToolEventStreamRequest{}
+		request := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 		streamBackend.EXPECT().Send(request).Return(status.Error(codes.Internal, "Bad"))
 		err = stream.Send(request)
 		require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestErrorIgnoringBuildEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		request := &build.PublishBuildToolEventStreamRequest{}
+		request := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 		streamBackend.EXPECT().Send(request).Return(nil).Times(2)
 		err = stream.Send(request)
 		require.NoError(t, err)

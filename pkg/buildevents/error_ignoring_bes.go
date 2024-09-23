@@ -62,7 +62,7 @@ func newErrorIgnoringBuildToolEventStreamClient(ctx context.Context, backend Bui
 	}
 }
 
-func (s *errorIgnoringBuildToolEventStreamClient) Send(req *build.PublishBuildToolEventStreamRequest) error {
+func (s *errorIgnoringBuildToolEventStreamClient) Send(req *BufferedPublishBuildToolEventStreamRequest) error {
 	s.ackCounter.Release(1)
 	if s.sendBackend != nil {
 		if err := s.sendBackend.Send(req); err != nil {

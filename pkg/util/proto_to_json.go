@@ -47,6 +47,25 @@ func ProtoToJSONToInterface(m protoreflect.ProtoMessage) map[string]interface{} 
 	return ret
 }
 
+// ProtoValueToJSONToInterface converts a Protobuf value to a JSON
+// representation 64-bit integers are represented as floating point numbers
+// instead of strings.
+func ProtoValueToJSONToInterface(m protoreflect.ProtoMessage) interface{} {
+	marshaled, err := protojson.MarshalOptions{
+		UseEnumNumbers:    false,
+		UseProtoNames:     true,
+		EmitDefaultValues: true,
+	}.Marshal(m)
+	if err != nil {
+		return status.Convert(util.StatusWrap(err, "Failed to marshal")).Message()
+	}
+	ret := interface{}(nil)
+	if err := json.Unmarshal(marshaled, &ret); err != nil {
+		return status.Convert(util.StatusWrap(err, "Failed to unmarshal")).Message()
+	}
+	return ret
+}
+
 // ProtoListToJSONToInterface converts a repeated Protobuf field to a JSON array
 // where 64-bit integers are represented as floating point numbers
 // instead of strings.

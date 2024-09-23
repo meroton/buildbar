@@ -46,7 +46,7 @@ type grpcBuildToolEventStreamClient struct {
 	gotInitialData         chan struct{}
 }
 
-func (s *grpcBuildToolEventStreamClient) Send(request *build.PublishBuildToolEventStreamRequest) error {
+func (s *grpcBuildToolEventStreamClient) Send(request *BufferedPublishBuildToolEventStreamRequest) error {
 	select {
 	case <-s.gotInitialData:
 		// noop
@@ -69,7 +69,7 @@ func (s *grpcBuildToolEventStreamClient) Send(request *build.PublishBuildToolEve
 	}
 	s.nextSendSequenceNumber++
 
-	s.backend.Send(request)
+	s.backend.Send(request.PublishBuildToolEventStreamRequest)
 	return nil
 }
 

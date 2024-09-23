@@ -45,7 +45,7 @@ type annotatedBuildToolEventStreamClient struct {
 	reason  string
 }
 
-func (s *annotatedBuildToolEventStreamClient) Send(req *build.PublishBuildToolEventStreamRequest) error {
+func (s *annotatedBuildToolEventStreamClient) Send(req *BufferedPublishBuildToolEventStreamRequest) error {
 	if err := s.backend.Send(req); err != nil {
 		return util.StatusWrap(err, s.reason)
 	}

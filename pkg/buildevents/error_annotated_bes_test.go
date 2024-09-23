@@ -38,7 +38,7 @@ func TestAnnotatedBuildEventServer(t *testing.T) {
 
 	t.Run("PublishBuildToolEventStreamNoError", func(t *testing.T) {
 		streamBackend := mock.NewMockBuildToolEventStreamClient(ctrl)
-		request := &build.PublishBuildToolEventStreamRequest{}
+		request := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 
 		// Check that the channels are passed straight through.
 		besBackend.EXPECT().PublishBuildToolEventStream(ctx).Return(streamBackend, nil)

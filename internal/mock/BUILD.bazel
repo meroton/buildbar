@@ -30,8 +30,6 @@ gomock(
     out = "bazelevents.go",
     interfaces = [
         "BazelEventConverter",
-        "BazelEventServer",
-        "BazelEventStreamClient",
     ],
     library = "//pkg/bazelevents",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",

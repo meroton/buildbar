@@ -69,17 +69,17 @@ func TestMultiplexingBuildEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		requestA := &build.PublishBuildToolEventStreamRequest{}
-		requestB := &build.PublishBuildToolEventStreamRequest{}
+		requestA := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
+		requestB := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 
-		requestQueue1 := make(chan *build.PublishBuildToolEventStreamRequest, 1)
-		streamBackend1.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *build.PublishBuildToolEventStreamRequest) error {
+		requestQueue1 := make(chan *buildevents.BufferedPublishBuildToolEventStreamRequest, 1)
+		streamBackend1.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *buildevents.BufferedPublishBuildToolEventStreamRequest) error {
 			requestQueue1 <- req
 			return nil
 		}).Times(2)
 
-		requestQueue2 := make(chan *build.PublishBuildToolEventStreamRequest, 1)
-		streamBackend2.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *build.PublishBuildToolEventStreamRequest) error {
+		requestQueue2 := make(chan *buildevents.BufferedPublishBuildToolEventStreamRequest, 1)
+		streamBackend2.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *buildevents.BufferedPublishBuildToolEventStreamRequest) error {
 			requestQueue2 <- req
 			return nil
 		}).Times(2)

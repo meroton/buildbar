@@ -78,7 +78,7 @@ type multiplexingBuildToolEventStreamClient struct {
 	ackCounters  []*semaphore.Weighted
 }
 
-func (s *multiplexingBuildToolEventStreamClient) Send(req *build.PublishBuildToolEventStreamRequest) error {
+func (s *multiplexingBuildToolEventStreamClient) Send(req *BufferedPublishBuildToolEventStreamRequest) error {
 	for _, backend := range s.sendBackends {
 		if err := backend.Send(req); err != nil {
 			return err

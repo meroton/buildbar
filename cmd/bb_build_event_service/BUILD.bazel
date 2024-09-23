@@ -9,6 +9,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//pkg/buildevents",
+        "//pkg/buildevents/configuration",
         "//proto/configuration/bb_build_event_service",
         "@com_github_buildbarn_bb_storage//pkg/global",
         "@com_github_buildbarn_bb_storage//pkg/grpc",

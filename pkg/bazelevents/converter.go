@@ -16,6 +16,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const MaxAccumulatedDocuments = 25
+
 type ConvertedDocument map[string]interface{}
 
 // BazelEventConverter converts a CompletedAction into a format that is
@@ -166,8 +168,14 @@ func (bec *bazelEventConverter) ExtractInterestingData(ctx context.Context, even
 	fullDocuments := map[string]ConvertedDocument{}
 	for suffix, document := range documents {
 		fullDocument := map[string]interface{}{
-			"event_time": eventTime.String(),
-			"metadata":   bec.buildMetadata,
+			"event_time": buildbarutil.ProtoValueToJSONToInterface(eventTime),
+		}
+		if bec.buildMetadata != nil {
+			fullDocument["metadata"] = bec.buildMetadata
+		} else {
+			fullDocument["metadata"] = map[string]string{
+				"no-metadata-received-yet": "1",
+			}
 		}
 		for key, value := range document {
 			fullDocument[key] = value
@@ -178,10 +186,9 @@ func (bec *bazelEventConverter) ExtractInterestingData(ctx context.Context, even
 	if bec.buildMetadata == nil {
 		// Store the documents for later, when we have metadata.
 		for suffix, value := range fullDocuments {
-			const maxAccumulatedDocuments = 10
-			if len(bec.accumulatedDocuments) < maxAccumulatedDocuments {
+			if len(bec.accumulatedDocuments) < MaxAccumulatedDocuments {
 				bec.accumulatedDocuments[suffix] = value
-				if len(bec.accumulatedDocuments) == maxAccumulatedDocuments {
+				if len(bec.accumulatedDocuments) == MaxAccumulatedDocuments {
 					bec.errorLogger.Log(status.Error(codes.FailedPrecondition, "Too many documents accumulated without build metadata"))
 				}
 			}
@@ -206,7 +213,7 @@ func (bec *bazelEventConverter) publishStartedEvent(payload *buildeventstream.Bu
 		"started": {
 			"type":                "Started",
 			"uuid":                payload.Uuid,
-			"start_time":          payload.StartTime.String(),
+			"start_time":          buildbarutil.ProtoValueToJSONToInterface(payload.StartTime),
 			"build_tool_version":  payload.BuildToolVersion,
 			"options_description": payload.OptionsDescription,
 			"started_command":     payload.Command,
@@ -419,7 +426,7 @@ func (bec *bazelEventConverter) publishBuildFinished(payload *buildeventstream.B
 	finished := map[string]interface{}{
 		"exit_code":       payload.ExitCode.GetCode(),
 		"exit_code_name":  payload.ExitCode.GetName(),
-		"finish_time":     payload.FinishTime.String(),
+		"finish_time":     buildbarutil.ProtoValueToJSONToInterface(payload.FinishTime),
 		"failure_message": payload.FailureDetail.GetMessage(),
 		// TODO: Add the failure detail enums.
 	}
@@ -511,7 +518,7 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 			"wall_time":                    float64(payload.TimingMetrics.GetWallTimeInMs()) / 1000.0,
 			"analysis_phase_start_time":    float64(payload.TimingMetrics.GetAnalysisPhaseTimeInMs()) / 1000.0,
 			"execution_phase_start_time":   float64(payload.TimingMetrics.GetExecutionPhaseTimeInMs()) / 1000.0,
-			"actions_execution_start_time": float64(payload.TimingMetrics.GetActionExecutionStartInMs()) / 1000.0,
+			"actions_execution_start_time": float64(payload.TimingMetrics.GetActionsExecutionStartInMs()) / 1000.0,
 			"cumulative_server_metrics": map[string]interface{}{
 				"num_analyses": payload.CumulativeMetrics.GetNumAnalyses(),
 				"num_builds":   payload.CumulativeMetrics.GetNumBuilds(),

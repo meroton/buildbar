@@ -41,7 +41,10 @@ func (bes *grpcServer) PublishBuildToolEventStream(upstream build.PublishBuildEv
 		stream.CloseSend()
 		return err
 	}
-	if err := stream.Send(initialRequest); err != nil {
+	bufferedInitialRequest := &BufferedPublishBuildToolEventStreamRequest{
+		PublishBuildToolEventStreamRequest: initialRequest,
+	}
+	if err := stream.Send(bufferedInitialRequest); err != nil {
 		return err
 	}
 
@@ -67,7 +70,10 @@ func (bes *grpcServer) PublishBuildToolEventStream(upstream build.PublishBuildEv
 			} else if requestNumber != nextRequestNumber {
 				return status.Errorf(codes.InvalidArgument, "gRPC server: Expected consecutive request sequence number %d but got %d", nextRequestNumber, requestNumber)
 			}
-			if err := stream.Send(request); err != nil {
+			bufferedRequest := &BufferedPublishBuildToolEventStreamRequest{
+				PublishBuildToolEventStreamRequest: request,
+			}
+			if err := stream.Send(bufferedRequest); err != nil {
 				return err
 			}
 			nextRequestNumber++

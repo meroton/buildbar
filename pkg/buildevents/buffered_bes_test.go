@@ -8,8 +8,6 @@ import (
 	"github.com/meroton/buildbar/pkg/buildevents"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-
-	build "google.golang.org/genproto/googleapis/devtools/build/v1"
 )
 
 func TestBufferedBuildEventServer(t *testing.T) {
@@ -21,10 +19,10 @@ func TestBufferedBuildEventServer(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("PublishBuildToolEventStream", func(t *testing.T) {
-		backendRequests := make(chan *build.PublishBuildToolEventStreamRequest, 0)
+		backendRequests := make(chan *buildevents.BufferedPublishBuildToolEventStreamRequest, 0)
 
 		streamBackend := mock.NewMockBuildToolEventStreamClient(ctrl)
-		streamBackend.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *build.PublishBuildToolEventStreamRequest) error {
+		streamBackend.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *buildevents.BufferedPublishBuildToolEventStreamRequest) error {
 			backendRequests <- req
 			return nil
 		}).Times(7)
@@ -39,8 +37,8 @@ func TestBufferedBuildEventServer(t *testing.T) {
 		stream, err := server.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 		// Should be able to post two events.
-		request1 := &build.PublishBuildToolEventStreamRequest{}
-		request2 := &build.PublishBuildToolEventStreamRequest{}
+		request1 := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
+		request2 := &buildevents.BufferedPublishBuildToolEventStreamRequest{}
 		stream.Send(request1)
 		stream.Send(request2)
 		require.Equal(t, request1, <-backendRequests)

@@ -69,8 +69,8 @@ func TestGrpcBuildEventServer(t *testing.T) {
 		stream, err := client.PublishBuildToolEventStream(ctx)
 		require.NoError(t, err)
 
-		streamBackend.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *build.PublishBuildToolEventStreamRequest) error {
-			testutil.RequireEqualProto(t, request, req)
+		streamBackend.EXPECT().Send(gomock.Any()).DoAndReturn(func(req *buildevents.BufferedPublishBuildToolEventStreamRequest) error {
+			testutil.RequireEqualProto(t, request, req.PublishBuildToolEventStreamRequest)
 			return nil
 		})
 		require.NoError(t, stream.Send(request))
