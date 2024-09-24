@@ -81,29 +81,4 @@ message ElasticsearchBESConfiguration {
 
   // The Elasticsearch index to store build events in.
   string index = 2;
-
-  message MetadataSource {
-    oneof source {
-      // Name of a --client_env variable.
-      string client_env = 1;
-
-      // Name of a --build_metadata variable.
-      string build_metadata = 2;
-
-      // Name of a variable from the workspace status command.
-      string workspace_status = 3;
-    }
-  }
-
-  message MetadataSources {
-    // The first match will be used.
-    repeated MetadataSource sources = 2;
-
-    // Optional default value if no source match.
-    string default = 4;
-  }
-
-  // Metadata that will be added to each ingested document.
-  //
-  map<string, MetadataSources> metadata = 3;
 }
