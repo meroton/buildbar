@@ -71,6 +71,12 @@ func NewBazelEventConverter(errorLogger util.ErrorLogger) BazelEventConverter {
 	}
 }
 
+var cleanIdSuffixRegex = regexp.MustCompile(`[^-_+a-zA-Z0-9]`)
+
+func cleanIdSuffix(dirtyID string) string {
+    return nonAlphanumericRegex.ReplaceAllString(dirtyID, "")
+}
+
 func (bec *bazelEventConverter) getPlatformInfo(configurationID string) platformInfo {
 	if pi, ok := bec.configurations[configurationID]; ok {
 		return pi
@@ -293,7 +299,7 @@ func (bec *bazelEventConverter) collectAndPublishConfiguration(id *buildeventstr
 	}
 	bec.configurations[id.Id] = platformInfo
 	return map[string]ConvertedDocuments{
-		"configuration-" + id.Id: {
+		"configuration-" + cleanIdSuffix(id.Id): {
 			"type": "Configuration",
 			"configuration": map[string]interface{}{
 				"mnemonic": payload.Mnemonic,
@@ -322,7 +328,7 @@ func (bec *bazelEventConverter) publishFailedAction(id *buildeventstream.BuildEv
 				payload.StartTime.AsTime()).Seconds()
 		}
 		return map[string]ConvertedDocuments{
-			"action-completed-" + id.PrimaryOutput: {
+			"action-completed-" + cleanIdSuffix(id.PrimaryOutput): {
 				"type":     "FailedAction",
 				"label":    id.Label,
 				"platform": bec.getPlatformInfo(id.Configuration.GetId()),
@@ -345,7 +351,7 @@ func (bec *bazelEventConverter) publishTargetCompleted(id *buildeventstream.Buil
 		docID += "-" + id.Aspect
 	}
 	return map[string]ConvertedDocuments{
-		docID: {
+		"target-completed-" + cleanIdSuffix(docID): {
 			"type":     "TargetCompleted",
 			"label":    id.Label,
 			"platform": bec.getPlatformInfo(id.Configuration.GetId()),
@@ -383,7 +389,7 @@ func (bec *bazelEventConverter) publishTestResult(id *buildeventstream.BuildEven
 	}
 	docID := fmt.Sprintf("%s-%s-%d-%d-%d", id.Label, id.Configuration.GetId(), id.Run, id.Shard, id.Attempt)
 	return map[string]ConvertedDocuments{
-		docID: {
+		"test-result-" + cleanIdSuffix(docID): {
 			"type":        "TestResult",
 			"label":       id.Label,
 			"platform":    bec.getPlatformInfo(id.Configuration.GetId()),
@@ -406,8 +412,9 @@ func (bec *bazelEventConverter) publishTestSummary(id *buildeventstream.BuildEve
 			"total_run_duration":       payload.TotalRunDuration.AsDuration().Seconds(),
 		},
 	}
+	docID := id.Label + "-" + id.Configuration.GetId()
 	return map[string]ConvertedDocuments{
-		id.Label + "-" + id.Configuration.GetId(): document,
+		"test-summary-" + cleanIdSuffix(docID): document,
 	}
 }
 
@@ -421,8 +428,9 @@ func (bec *bazelEventConverter) publishTargetSummary(id *buildeventstream.BuildE
 			"overall_test_status":   payload.OverallTestStatus.String(),
 		},
 	}
+	docID:=id.Label + "-" + id.Configuration.GetId()
 	return map[string]ConvertedDocuments{
-		id.Label + "-" + id.Configuration.GetId(): document,
+		"target-summary-" + cleanIdSuffix(docID): document,
 	}
 }
 
@@ -462,7 +470,7 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 		}
 		actionDataMap[pbActionData.Mnemonic] = actionData
 		// TODO: Remove unless used in the dashboards.
-		documents["metrics-action-data-"+pbActionData.Mnemonic] = map[string]interface{}{
+		documents["metrics-action-data-"+cleanIdSuffix(pbActionData.Mnemonic)] = map[string]interface{}{
 			"type":        "BuildMetrics-ActionData",
 			"action_data": actionData,
 		}
@@ -476,7 +484,7 @@ func (bec *bazelEventConverter) publishBuildMetrics(payload *buildeventstream.Bu
 		}
 		runnerCountMap[pbRunnerCount.Name] = runnerCount
 		// TODO: Remove unless used in the dashboards.
-		documents["metrics-runner-count-"+pbRunnerCount.Name] = map[string]interface{}{
+		documents["metrics-runner-count-"+cleanIdSuffix(pbRunnerCount.Name)] = map[string]interface{}{
 			"type":         "BuildMetrics-RunnerCount",
 			"runner_count": runnerCount,
 		}

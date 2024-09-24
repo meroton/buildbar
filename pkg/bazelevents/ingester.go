@@ -152,6 +152,8 @@ func (s *ingestingStreamClient) Send(request *buildevents.BufferedPublishBuildTo
 		}
 		for suffix, document := range documents {
 			uuid := s.streamID.InvocationId + "-" + suffix
+			document["invocation_id"] = s.streamID.InvocationId
+			document["correlated_invocation_id"] = s.streamID
 			if err := s.uploader.Put(s.ctx, uuid, document); err != nil {
 				return util.StatusWrapf(err, "Bazel event %s for invocation %s", uuid, s.streamID.InvocationId)
 			}
