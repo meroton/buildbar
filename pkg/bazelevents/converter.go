@@ -5,6 +5,8 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"regexp"
+	"strings"
 
 	buildeventstream "github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -71,10 +73,17 @@ func NewBazelEventConverter(errorLogger util.ErrorLogger) BazelEventConverter {
 	}
 }
 
-var cleanIdSuffixRegex = regexp.MustCompile(`[^-_+a-zA-Z0-9]`)
+var invalidRunesIdSuffixRegex = regexp.MustCompile(`[^a-zA-Z0-9_\-+~]`)
 
-func cleanIdSuffix(dirtyID string) string {
-    return nonAlphanumericRegex.ReplaceAllString(dirtyID, "")
+func cleanIdSuffix(id string) string {
+	id = strings.ReplaceAll(id, "/", "~") // Simply remove @ in labels.
+	id = invalidRunesIdSuffixRegex.ReplaceAllString(id, "")
+	if len(id) > 50 {
+		digestBytes := md5.Sum([]byte(id))
+		digestHex := hex.EncodeToString(digestBytes[:])
+		id = id[:50] + digestHex
+	}
+	return id
 }
 
 func (bec *bazelEventConverter) getPlatformInfo(configurationID string) platformInfo {
@@ -428,7 +437,7 @@ func (bec *bazelEventConverter) publishTargetSummary(id *buildeventstream.BuildE
 			"overall_test_status":   payload.OverallTestStatus.String(),
 		},
 	}
-	docID:=id.Label + "-" + id.Configuration.GetId()
+	docID := id.Label + "-" + id.Configuration.GetId()
 	return map[string]ConvertedDocuments{
 		"target-summary-" + cleanIdSuffix(docID): document,
 	}

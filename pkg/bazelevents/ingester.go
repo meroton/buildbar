@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
@@ -152,9 +153,15 @@ func (s *ingestingStreamClient) Send(request *buildevents.BufferedPublishBuildTo
 		}
 		for suffix, document := range documents {
 			uuid := s.streamID.InvocationId + "-" + suffix
-			document["invocation_id"] = s.streamID.InvocationId
-			document["correlated_invocation_id"] = s.streamID
-			if err := s.uploader.Put(s.ctx, uuid, document); err != nil {
+			documentToIngest := make(map[string]interface{}, len(document)+4)
+			for k, v := range document {
+				documentToIngest[k] = v
+			}
+			documentToIngest["ingest_time"] = time.Now().Format(time.RFC3339)
+			documentToIngest["invocation_id"] = s.streamID.GetInvocationId()
+			documentToIngest["correlated_invocation_id"] = s.streamID.GetBuildId()
+			documentToIngest["instance_name"] = s.instanceName.String()
+			if err := s.uploader.Put(s.ctx, uuid, documentToIngest); err != nil {
 				return util.StatusWrapf(err, "Bazel event %s for invocation %s", uuid, s.streamID.InvocationId)
 			}
 		}

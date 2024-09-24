@@ -82,7 +82,7 @@ func TestExtractInterestingBazelEventData(t *testing.T) {
 			require.Equal(t, expectedDocuments[lineIdx], mustToAndFromJSON(t, actualDocuments))
 		}
 		require.NoError(t, inputScanner.Err())
-		require.Equal(t, len(expectedDocuments), lineIdx)
+		require.Len(t, expectedDocuments, lineIdx)
 	})
 
 	// The BuildMetadata event should arrive as one of the first events.
@@ -119,7 +119,7 @@ func TestExtractInterestingBazelEventData(t *testing.T) {
 
 			require.Len(t, actualDocuments, 1)
 			require.Equal(t, map[string]interface{}{
-				fmt.Sprintf("%d-cfg", i): map[string]interface{}{
+				fmt.Sprintf("target-summary-%d-cfg", i): map[string]interface{}{
 					"event_time": fmt.Sprintf("1970-01-01T00:00:%02dZ", i),
 					"metadata": map[string]interface{}{
 						"no-metadata-received-yet": "1",
@@ -173,7 +173,7 @@ func TestExtractInterestingBazelEventData(t *testing.T) {
 				"overall_build_success": false,
 				"overall_test_status":   "PASSED",
 			},
-		}, mustToAndFromJSON(t, lotsOfDocuments["0-cfg"]))
+		}, mustToAndFromJSON(t, lotsOfDocuments["target-summary-0-cfg"]))
 		require.Equal(t, map[string]interface{}{
 			"event_time": "1970-01-01T00:00:24Z",
 			"metadata":   map[string]interface{}{"key": "value"},
@@ -188,6 +188,6 @@ func TestExtractInterestingBazelEventData(t *testing.T) {
 				"overall_build_success": false,
 				"overall_test_status":   "PASSED",
 			},
-		}, mustToAndFromJSON(t, lotsOfDocuments["24-cfg"]))
+		}, mustToAndFromJSON(t, lotsOfDocuments["target-summary-24-cfg"]))
 	})
 }
