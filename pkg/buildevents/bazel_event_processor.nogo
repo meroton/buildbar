@@ -1,0 +1,194 @@
+package buildevents
+
+import (
+	"context"
+	"io"
+	"sync"
+
+	"github.com/buildbarn/bb-storage/pkg/digest"
+	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/meroton/buildbar/pkg/bazelevents"
+	"github.com/prometheus/client_golang/prometheus"
+
+	buildeventstream "github.com/bazelbuild/bazel/src/main/java/com/google/devtools/build/lib/buildeventstream/proto"
+	build "google.golang.org/genproto/googleapis/devtools/build/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+var (
+	ingesterPrometheusMetrics sync.Once
+
+	ingesterEventsReceived = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "buildbar",
+		Subsystem: "buildevents",
+		Name:      "ingester_events_received",
+		Help:      "Number of Build Events that has been received.",
+	})
+	ingesterInvalidEvents = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "buildbar",
+		Subsystem: "buildevents",
+		Name:      "ingester_invalid_events",
+		Help:      "Number of Build Events that could not be handled.",
+	})
+)
+
+type forwardStreamContextKeyType struct{}
+
+var forwardStreamContextKey = forwardStreamContextKeyType{}
+
+type bazelBuildEventServer struct {
+	backend   BuildEventServer
+	processor bazelevents.BazelEventServer
+}
+
+// NewBazelBuildEventServer creates a new BuildEventServer that extracts Bazel events
+// and forwards them to a processor.
+func NewBazelBuildEventServer(
+	backend BuildEventServer,
+	processorFactory func(backend bazelevents.BazelEventServer) bazelevents.BazelEventServer,
+) BuildEventServer {
+	ingesterPrometheusMetrics.Do(func() {
+		prometheus.MustRegister(ingesterEventsReceived)
+		prometheus.MustRegister(ingesterInvalidEvents)
+	})
+	bazelEventServerBackend := &bazelEventForwarder{
+		backend: backend,
+	}
+	return &bazelBuildEventServer{
+		backend:   backend,
+		processor: processorFactory(bazelEventServerBackend),
+	}
+}
+
+func (i *bazelBuildEventServer) PublishLifecycleEvent(ctx context.Context, in *build.PublishLifecycleEventRequest) error {
+	if i.backend == nil {
+		// Nothing to do.
+		return nil
+	}
+	return i.backend.PublishLifecycleEvent(ctx, in)
+}
+
+func (i *bazelBuildEventServer) PublishBuildToolEventStream(ctx context.Context) (BuildToolEventStreamClient, error) {
+	return &bazelBuildEventStreamClient{
+		ctx: ctx,
+		// Create a reasonably buffered channel.
+		recvChannel:      make(chan bool, 100),
+		forwarderBackend: i.backend,
+		processor:        i.processor,
+		stream:           nil,
+	}, nil
+}
+
+type bazelBuildEventStreamClient struct {
+	ctx              context.Context
+	recvChannel      chan bool
+	forwarderBackend BuildEventServer
+	// The processor is needed to initialize the stream when the first event is received.
+	processor               bazelevents.BazelEventServer
+	stream                  bazelevents.BazelEventStreamClient
+	bazelEventMetadataQueue *bazelEventMetadataQueue
+}
+
+type bazelEventMetadata struct {
+	eventTime *timestamppb.Timestamp
+}
+
+type bazelEventMetadataQueue struct {
+	lock          sync.Mutex
+	metadataQueue []*bazelEventMetadata
+}
+
+func (s *bazelBuildEventStreamClient) Send(request *build.PublishBuildToolEventStreamRequest) error {
+	ingesterEventsReceived.Inc()
+
+	// Only forward Bazel events.
+	if bazelEvent := request.OrderedBuildEvent.GetEvent().GetBazelEvent(); bazelEvent != nil {
+		if s.stream == nil {
+			streamID := request.OrderedBuildEvent.GetStreamId()
+			if streamID == nil {
+				return status.Error(codes.InvalidArgument, "Stream ID is empty")
+			}
+			instanceName, err := digest.NewInstanceName(request.ProjectId)
+			if err != nil {
+				return util.StatusWrap(err, "Bad build tool event instance name")
+			}
+			s.bazelEventMetadataQueue = &bazelEventMetadataQueue{}
+			forwardCtx := context.WithValue(s.ctx, forwardStreamContextKey, s.bazelEventMetadataQueue)
+			s.stream, err = s.processor.PublishBazelEvents(forwardCtx, instanceName, streamID)
+			if err != nil {
+				s.stream = nil
+				return util.StatusWrap(err, "Failed to create Bazel event stream")
+			}
+			s.processor = nil
+		}
+		var bazelBuildEvent buildeventstream.BuildEvent
+		if err := bazelEvent.UnmarshalTo(&bazelBuildEvent); err != nil {
+			return util.StatusWrap(err, "Failed to unmarshal Bazel build event")
+		}
+		if err := s.stream.Send(request.OrderedBuildEvent.GetEvent().GetEventTime(), &bazelBuildEvent); err != nil {
+			return err
+		}
+		s.recvChannel <- true
+	} else {
+		// Unused event.
+		s.recvChannel <- false
+	}
+	return nil
+}
+
+func (s *bazelBuildEventStreamClient) CloseSend() {
+	close(s.recvChannel)
+}
+
+func (s *bazelBuildEventStreamClient) Recv() error {
+	select {
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	case recvFromDownstream, ok := <-s.recvChannel:
+		if !ok {
+			return io.EOF
+		}
+		if !recvFromDownstream {
+			return nil
+		}
+		err := s.stream.Recv()
+		if err != nil {
+			// Just continue to get errors downstream.
+			s.recvChannel <- true
+		}
+		return err
+	}
+}
+
+type bazelEventForwarder struct {
+	backend BuildEventServer
+}
+
+func (bef *bazelEventForwarder) PublishBazelEvents(ctx context.Context, instanceName digest.InstanceName, streamID *build.StreamId) (BazelEventStreamClient, error) {
+	bazelEventMetadataQueue := ctx.Value(forwardStreamContextKey)
+	stream, err := bef.backend.PublishBuildToolEventStream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &bazelEventForwarderStream{
+		stream:                  stream,
+		bazelEventMetadataQueue: bazelEventMetadataQueue.(*bazelEventMetadataQueue),
+	}, nil
+}
+
+type bazelEventForwarderStream struct {
+	stream BuildToolEventStreamClient
+	bazelEventMetadataQueue *bazelEventMetadataQueue
+}
+
+func (s *bazelEventForwarderStream) Send(eventTime *timestamppb.Timestamp, event *buildeventstream.BuildEvent) error {
+	metadata := &bazelEventMetadata{
+	}
+	return s.stream.Send(eventTime, event)
+}
+
+func (s *bazelEventForwarderStream) Recv() error {
+	return s.stream.Recv()
+}
