@@ -28,7 +28,7 @@ gomock(
 gomock(
     name = "completedaction",
     out = "completedaction.go",
-    interfaces = ["CompletedActionConverter"],
+    interfaces = ["ActionConverter"],
     library = "//pkg/completedaction",
     mockgen_model_library = "@org_uber_go_mock//mockgen/model",
     mockgen_tool = "@org_uber_go_mock//mockgen",
