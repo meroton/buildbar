@@ -20,23 +20,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// CompletedActionConverter converts a CompletedAction into a format that is
+// ActionConverter converts a CompletedAction into a format that is
 // suitable for Elasticsearch.
-type CompletedActionConverter interface {
+type ActionConverter interface { //nolint:all
 	FlattenCompletedAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (map[string]interface{}, error)
 }
 
-type completedActionConverter struct {
+type actionConverter struct {
 	contentAddressableStorage blobstore.BlobAccess
 	maximumMessageSizeBytes   int
 }
 
-// NewConverter creates a new Converter.
-func NewCompletedActionConverter(
+// NewActionConverter creates a new ActionConverter.
+func NewActionConverter(
 	contentAddressableStorage blobstore.BlobAccess,
 	maximumMessageSizeBytes int,
-) CompletedActionConverter {
-	return &completedActionConverter{
+) ActionConverter {
+	return &actionConverter{
 		contentAddressableStorage: contentAddressableStorage,
 		maximumMessageSizeBytes:   maximumMessageSizeBytes,
 	}
@@ -45,7 +45,7 @@ func NewCompletedActionConverter(
 // FlattenCompletedAction expands certain array structures to be able to index
 // data in Elasticsearch. It also populates the message with extra useful
 // attributes.
-func (cac *completedActionConverter) FlattenCompletedAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (map[string]interface{}, error) {
+func (cac *actionConverter) FlattenCompletedAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (map[string]interface{}, error) {
 	document := map[string]interface{}{
 		"action_digest":   buildbarutil.ProtoDigestToJSON(completedAction.HistoricalExecuteResponse.GetActionDigest()),
 		"uuid":            completedAction.Uuid,
@@ -252,7 +252,7 @@ func (cac *completedActionConverter) FlattenCompletedAction(ctx context.Context,
 	return document, nil
 }
 
-func (cac *completedActionConverter) getAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (
+func (cac *actionConverter) getAction(ctx context.Context, completedAction *cal_proto.CompletedAction) (
 	*remoteexecution.Action, *remoteexecution.Command, error,
 ) {
 	instanceName, err := digest.NewInstanceName(completedAction.InstanceName)

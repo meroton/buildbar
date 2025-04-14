@@ -66,7 +66,7 @@ func main() {
 				clock.SystemClock,
 				util.DefaultErrorLogger,
 			),
-			completedaction.NewCompletedActionConverter(
+			completedaction.NewActionConverter(
 				contentAddressableStorage.BlobAccess,
 				int(configuration.MaximumMessageSizeBytes),
 			),
@@ -78,6 +78,7 @@ func main() {
 				cal_proto.RegisterCompletedActionLoggerServer(s, ingester)
 			},
 			siblingsGroup,
+			grpcClientFactory,
 		); err != nil {
 			return util.StatusWrap(err, "gRPC server failure")
 		}

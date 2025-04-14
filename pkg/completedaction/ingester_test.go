@@ -20,7 +20,7 @@ import (
 func TestCompletedActionIngester(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	converter := mock.NewMockCompletedActionConverter(ctrl)
+	converter := mock.NewMockActionConverter(ctrl)
 	calStream := mock.NewMockCompletedActionLogger_LogCompletedActionsServer(ctrl)
 	uploader := mock.NewMockUploader(ctrl)
 

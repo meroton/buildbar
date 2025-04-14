@@ -48,7 +48,9 @@
     {
       name: 'windows_amd64',
       buildAndTestCommand: 'build',
-      buildJustBinaries: false,
+      // Building '//...' is broken for Windows, because it depends on a C++
+      // toolchain.
+      buildJustBinaries: true,
       extension: '.exe',
     },
   ],
