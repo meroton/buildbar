@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package buildbar.configuration.bb_slow_generic_runner;
+
+import "pkg/proto/configuration/global/global.proto";
+import "pkg/proto/configuration/grpc/grpc.proto";
+
+option go_package = "github.com/meroton/buildbar/proto/configuration/bb_slow_generic_runner";
+
+message ApplicationConfiguration {
+  // Directory where builds take place.
+  string build_directory_path = 1;
+
+  // gRPC servers to spawn to listen for requests from bb_worker.
+  repeated buildbarn.configuration.grpc.ServerConfiguration grpc_servers = 2;
+
+  // Common configuration options that apply to all Buildbarn binaries.
+  buildbarn.configuration.global.Configuration global = 3;
+
+  // Run the command prefixed with these arguments. This makes it possible to
+  // call a wrapper installed on the runner system.
+  //
+  // The first argument is the input root directory followed by the working
+  // directory relative to the input root. After that follows the command to run
+  // and the rest of the arguments.
+  //
+  // Example: wrapper.sh /input/root/directory working/dir command arg1 arg2
+  //
+  // Caution: Since this option executes a command in a separate process there
+  // is an inherent performance penalty. If possible, use the standard
+  // bb-runner.
+  repeated string run_command_wrapper = 4;
+
+  // Run a readiness checking command with arguments. The runner is considered
+  // healthy if the command succeeds with zero exit code.
+  //
+  // Caution: Since this option executes a command in a separate process there
+  // is an inherent performance penalty. If possible, use the standard
+  // bb-runner.
+  repeated string readiness_command = 5;
+
+  // Run a clean command with arguments. This option allows a custom clean
+  // operation that can perform arbitrary cleaning desired on the system.
+  // This could be useful reset state that cannot be changed using the other
+  // built-in options (e.g. stopping docker containers left running by an
+  // action).
+  //
+  // This command runs when the runner transitions from being idle to running
+  // at least one action, and vice versa. It is also called periodically
+  // whenever the runner is idle.
+  //
+  // Caution: Since this option executes a command in a separate process
+  // there is an inherent performance penalty. If possible, use the standard
+  // bb-runner.
+  repeated string cleaner_command = 6;
+}

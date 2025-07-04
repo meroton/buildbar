@@ -1,0 +1,44 @@
+load("@aspect_bazel_lib//lib:write_source_files.bzl", "write_source_file")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "bb_slow_generic_runner_proto",
+    srcs = ["bb_slow_generic_runner.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/global:global_proto",
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc:grpc_proto",
+    ],
+)
+
+go_proto_library(
+    name = "bb_slow_generic_runner_go_proto",
+    importpath = "github.com/meroton/buildbar/proto/configuration/bb_slow_generic_runner",
+    proto = ":bb_slow_generic_runner_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/global",
+        "@com_github_buildbarn_bb_storage//pkg/proto/configuration/grpc",
+    ],
+)
+
+go_library(
+    name = "bb_slow_generic_runner",
+    embed = [":bb_slow_generic_runner_go_proto"],
+    importpath = "github.com/meroton/buildbar/proto/configuration/bb_slow_generic_runner",
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "bb_slow_generic_runner_go_proto_pb_go",
+    srcs = [":bb_slow_generic_runner_go_proto"],
+    output_group = "go_generated_srcs",
+)
+
+write_source_file(
+    name = "bb_slow_generic_runner_pb_go",
+    in_file = ":bb_slow_generic_runner_go_proto_pb_go",
+    out_file = "bb_slow_generic_runner.pb.go",
+)
