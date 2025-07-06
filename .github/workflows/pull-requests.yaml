@@ -65,11 +65,11 @@
             },
             {
                "name": "freebsd_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_completed_actions_ingester"
+               "run": "bazel build --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_completed_actions_ingester //cmd/bb_slow_generic_runner"
             },
             {
                "name": "windows_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_completed_actions_ingester"
+               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_completed_actions_ingester //cmd/bb_slow_generic_runner"
             }
          ]
       }

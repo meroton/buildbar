@@ -56,6 +56,18 @@
                }
             },
             {
+               "name": "linux_amd64: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "linux_amd64: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.linux_amd64",
+                  "path": "bb_slow_generic_runner"
+               }
+            },
+            {
                "name": "linux_386: build and test",
                "run": "bazel test --test_output=errors --platforms=@rules_go//go/toolchain:linux_386 //..."
             },
@@ -69,6 +81,18 @@
                "with": {
                   "name": "bb_completed_actions_ingester.linux_386",
                   "path": "bb_completed_actions_ingester"
+               }
+            },
+            {
+               "name": "linux_386: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_386 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "linux_386: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.linux_386",
+                  "path": "bb_slow_generic_runner"
                }
             },
             {
@@ -88,6 +112,18 @@
                }
             },
             {
+               "name": "linux_arm: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "linux_arm: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.linux_arm",
+                  "path": "bb_slow_generic_runner"
+               }
+            },
+            {
                "name": "linux_arm64: build and test",
                "run": "bazel build --platforms=@rules_go//go/toolchain:linux_arm64 //..."
             },
@@ -101,6 +137,18 @@
                "with": {
                   "name": "bb_completed_actions_ingester.linux_arm64",
                   "path": "bb_completed_actions_ingester"
+               }
+            },
+            {
+               "name": "linux_arm64: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_arm64 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "linux_arm64: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.linux_arm64",
+                  "path": "bb_slow_generic_runner"
                }
             },
             {
@@ -120,6 +168,18 @@
                }
             },
             {
+               "name": "darwin_amd64: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_amd64 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "darwin_amd64: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.darwin_amd64",
+                  "path": "bb_slow_generic_runner"
+               }
+            },
+            {
                "name": "darwin_arm64: build and test",
                "run": "bazel build --platforms=@rules_go//go/toolchain:darwin_arm64 //..."
             },
@@ -136,8 +196,20 @@
                }
             },
             {
+               "name": "darwin_arm64: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:darwin_arm64 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "darwin_arm64: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.darwin_arm64",
+                  "path": "bb_slow_generic_runner"
+               }
+            },
+            {
                "name": "freebsd_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_completed_actions_ingester"
+               "run": "bazel build --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_completed_actions_ingester //cmd/bb_slow_generic_runner"
             },
             {
                "name": "freebsd_amd64: copy bb_completed_actions_ingester",
@@ -152,8 +224,20 @@
                }
             },
             {
+               "name": "freebsd_amd64: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner && bazel run --run_under cp --platforms=@rules_go//go/toolchain:freebsd_amd64 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner"
+            },
+            {
+               "name": "freebsd_amd64: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.freebsd_amd64",
+                  "path": "bb_slow_generic_runner"
+               }
+            },
+            {
                "name": "windows_amd64: build and test",
-               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_completed_actions_ingester"
+               "run": "bazel build --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_completed_actions_ingester //cmd/bb_slow_generic_runner"
             },
             {
                "name": "windows_amd64: copy bb_completed_actions_ingester",
@@ -165,6 +249,18 @@
                "with": {
                   "name": "bb_completed_actions_ingester.windows_amd64",
                   "path": "bb_completed_actions_ingester.exe"
+               }
+            },
+            {
+               "name": "windows_amd64: copy bb_slow_generic_runner",
+               "run": "rm -f bb_slow_generic_runner.exe && bazel run --run_under cp --platforms=@rules_go//go/toolchain:windows_amd64 //cmd/bb_slow_generic_runner $(pwd)/bb_slow_generic_runner.exe"
+            },
+            {
+               "name": "windows_amd64: upload bb_slow_generic_runner",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "bb_slow_generic_runner.windows_amd64",
+                  "path": "bb_slow_generic_runner.exe"
                }
             },
             {
