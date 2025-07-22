@@ -64,7 +64,7 @@ func main() {
 
 		// Command to succeed for the runner to be healthy.
 		if len(configuration.ReadinessCommand) > 0 {
-			r = own_runner.NewRedinessCommandRunner(r, configuration.ReadinessCommand)
+			r = own_runner.NewReadinessCommandRunner(r, configuration.ReadinessCommand)
 		}
 
 		if err := bb_grpc.NewServersFromConfigurationAndServe(
