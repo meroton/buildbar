@@ -1,6 +1,6 @@
 load("@com_github_buildbarn_bb_storage//tools:container.bzl", "multiarch_go_image")
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("//tools:container.bzl", "container_push_official")
+load("//tools:container.bzl", "container_push_meroton", "container_push_official")
 
 go_library(
     name = "bb_completed_actions_ingester_lib",
@@ -37,6 +37,12 @@ multiarch_go_image(
 
 container_push_official(
     name = "bb_completed_actions_ingester_container_push",
+    component = "bb-completed-actions-ingester",
+    image = ":bb_completed_actions_ingester_container",
+)
+
+container_push_meroton(
+    name = "bb_completed_actions_ingester_container_push_meroton",
     component = "bb-completed-actions-ingester",
     image = ":bb_completed_actions_ingester_container",
 )
