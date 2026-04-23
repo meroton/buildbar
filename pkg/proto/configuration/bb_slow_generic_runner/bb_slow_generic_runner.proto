@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package buildbar.configuration.bb_slow_generic_runner;
 
-import "pkg/proto/configuration/global/global.proto";
-import "pkg/proto/configuration/grpc/grpc.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/global/global.proto";
+import "github.com/buildbarn/bb-storage/pkg/proto/configuration/grpc/grpc.proto";
 
-option go_package = "github.com/meroton/buildbar/proto/configuration/bb_slow_generic_runner";
+option go_package = "github.com/meroton/buildbar/pkg/proto/configuration/bb_slow_generic_runner";
 
 message ApplicationConfiguration {
   // Directory where builds take place.

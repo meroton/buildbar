@@ -9,7 +9,7 @@ import (
 
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/elastic/go-elasticsearch/v8"
-	pb "github.com/meroton/buildbar/proto/configuration/elasticsearch"
+	pb "github.com/meroton/buildbar/pkg/proto/configuration/elasticsearch"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

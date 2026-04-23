@@ -11,9 +11,10 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/meroton/buildbar/pkg/completedaction"
 	"github.com/meroton/buildbar/pkg/elasticsearch"
-	"github.com/meroton/buildbar/proto/configuration/bb_completed_actions_ingester"
+	"github.com/meroton/buildbar/pkg/proto/configuration/bb_completed_actions_ingester"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,14 +33,18 @@ func main() {
 		if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
 			return util.StatusWrapf(err, "Failed to read configuration from %s", os.Args[1])
 		}
-		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
+		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global, dependenciesGroup)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
+		// Create a process-wide ZSTD compression pool.
+		zstdPool := bb_zstd.NewPoolFromConfiguration(configuration.ZstdPool)
+
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 			grpcClientFactory,
-			int(configuration.MaximumMessageSizeBytes))
+			int(configuration.MaximumMessageSizeBytes),
+			zstdPool)
 		contentAddressableStorage, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			dependenciesGroup,
 			configuration.ContentAddressableStorage,
