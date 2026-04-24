@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package buildbar.configuration.elasticsearch;
 
-option go_package = "github.com/meroton/buildbar/proto/configuration/elasticsearch";
+option go_package = "github.com/meroton/buildbar/pkg/proto/configuration/elasticsearch";
 
 message ClientConfiguration {
   // Addresses of the Elastic servers to which to connect. This string may be

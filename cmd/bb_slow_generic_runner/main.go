@@ -14,8 +14,8 @@ import (
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/util"
+	"github.com/meroton/buildbar/pkg/proto/configuration/bb_slow_generic_runner"
 	own_runner "github.com/meroton/buildbar/pkg/runner"
-	"github.com/meroton/buildbar/proto/configuration/bb_slow_generic_runner"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -29,9 +29,9 @@ func main() {
 		}
 		var configuration bb_slow_generic_runner.ApplicationConfiguration
 		if err := util.UnmarshalConfigurationFromFile(os.Args[1], &configuration); err != nil {
-			return util.StatusWrapf(err, "Failed to read configuration from %#v", os.Args[1])
+			return util.StatusWrapf(err, "Failed to read configuration from %s", os.Args[1])
 		}
-		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global)
+		lifecycleState, grpcClientFactory, err := global.ApplyConfiguration(configuration.Global, dependenciesGroup)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}

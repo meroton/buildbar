@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/meroton/buildbar/cmd/bb_slow_generic_runner",
     visibility = ["//visibility:private"],
     deps = [
+        "//pkg/proto/configuration/bb_slow_generic_runner",
         "//pkg/runner",
-        "//proto/configuration/bb_slow_generic_runner",
         "@com_github_buildbarn_bb_remote_execution//pkg/cleaner",
         "@com_github_buildbarn_bb_remote_execution//pkg/filesystem",
         "@com_github_buildbarn_bb_remote_execution//pkg/proto/runner",

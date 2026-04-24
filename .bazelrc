@@ -5,3 +5,6 @@ run --workspace_status_command="bash tools/workspace-status.sh"
 build --incompatible_strict_action_env
 
 test --test_output=errors
+
+common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc
+common --protocopt=--fatal_warnings

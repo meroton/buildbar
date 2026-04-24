@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/meroton/buildbar/pkg/elasticsearch",
     visibility = ["//visibility:public"],
     deps = [
-        "//proto/configuration/elasticsearch",
+        "//pkg/proto/configuration/elasticsearch",
         "@com_github_buildbarn_bb_storage//pkg/clock",
         "@com_github_buildbarn_bb_storage//pkg/util",
         "@com_github_elastic_go_elasticsearch_v8//:go-elasticsearch",

@@ -1,6 +1,6 @@
 load("@com_github_buildbarn_bb_storage//tools:container.bzl", "multiarch_go_image")
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("//tools:container.bzl", "container_push_meroton", "container_push_official")
+load("@rules_img//img:push.bzl", "image_push")
 
 go_library(
     name = "bb_completed_actions_ingester_lib",
@@ -10,7 +10,7 @@ go_library(
     deps = [
         "//pkg/completedaction",
         "//pkg/elasticsearch",
-        "//proto/configuration/bb_completed_actions_ingester",
+        "//pkg/proto/configuration/bb_completed_actions_ingester",
         "@com_github_buildbarn_bb_remote_execution//pkg/proto/completedactionlogger",
         "@com_github_buildbarn_bb_storage//pkg/blobstore/configuration",
         "@com_github_buildbarn_bb_storage//pkg/clock",
@@ -18,6 +18,7 @@ go_library(
         "@com_github_buildbarn_bb_storage//pkg/grpc",
         "@com_github_buildbarn_bb_storage//pkg/program",
         "@com_github_buildbarn_bb_storage//pkg/util",
+        "@com_github_buildbarn_bb_storage//pkg/zstd",
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
@@ -35,14 +36,24 @@ multiarch_go_image(
     binary = ":bb_completed_actions_ingester",
 )
 
-container_push_official(
+image_push(
     name = "bb_completed_actions_ingester_container_push",
-    component = "bb-completed-actions-ingester",
     image = ":bb_completed_actions_ingester_container",
+    registry = "ghcr.io",
+    repository = "meroton/bb-completed-actions-ingester",
+    tag_file = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
+    # Don't build container image unless explicitly requested, as
+    # building all variants can be time-consuming.
+    tags = ["manual"],
 )
 
-container_push_meroton(
+image_push(
     name = "bb_completed_actions_ingester_container_push_meroton",
-    component = "bb-completed-actions-ingester",
     image = ":bb_completed_actions_ingester_container",
+    registry = "273354657929.dkr.ecr.eu-central-1.amazonaws.com",
+    repository = "meroton/buildbarn/bb-completed-actions-ingester",
+    tag_file = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
+    # Don't build container image unless explicitly requested, as
+    # building all variants can be time-consuming.
+    tags = ["manual"],
 )
