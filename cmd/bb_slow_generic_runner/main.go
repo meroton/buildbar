@@ -43,7 +43,8 @@ func main() {
 		buildDirectory := re_filesystem.NewLazyDirectory(
 			func() (filesystem.DirectoryCloser, error) {
 				return filesystem.NewLocalDirectory(buildDirectoryPath)
-			})
+			},
+		)
 
 		commandCreator := own_runner.NewCommandWrapperCreator(configuration.RunCommandWrapper)
 
@@ -52,14 +53,17 @@ func main() {
 			buildDirectory,
 			buildDirectoryPath,
 			commandCreator,
-			setTmpdirEnvironmentVariable)
+			setTmpdirEnvironmentVariable,
+		)
 
 		if len(configuration.CleanerCommand) > 0 {
 			r = runner.NewCleanRunner(
 				r,
 				cleaner.NewIdleInvoker(cleaner.NewCommandRunningCleaner(
 					configuration.CleanerCommand[0],
-					configuration.CleanerCommand[1:])))
+					configuration.CleanerCommand[1:],
+				)),
+			)
 		}
 
 		// Command to succeed for the runner to be healthy.

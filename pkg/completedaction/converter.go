@@ -168,31 +168,38 @@ func (cac *actionConverter) FlattenCompletedAction(ctx context.Context, complete
 		metadata["virtual_execution_duration"] = executionMetadata.VirtualExecutionDuration.AsDuration().Seconds()
 		if executionMetadata.WorkerStartTimestamp.IsValid() && executionMetadata.QueuedTimestamp.IsValid() {
 			metadata["queued_duration"] = executionMetadata.WorkerStartTimestamp.AsTime().Sub(
-				executionMetadata.QueuedTimestamp.AsTime()).Seconds()
+				executionMetadata.QueuedTimestamp.AsTime(),
+			).Seconds()
 		}
 		if executionMetadata.InputFetchStartTimestamp.IsValid() && executionMetadata.WorkerStartTimestamp.IsValid() {
 			metadata["startup_duration"] = executionMetadata.InputFetchStartTimestamp.AsTime().Sub(
-				executionMetadata.WorkerStartTimestamp.AsTime()).Seconds()
+				executionMetadata.WorkerStartTimestamp.AsTime(),
+			).Seconds()
 		}
 		if executionMetadata.InputFetchCompletedTimestamp.IsValid() && executionMetadata.InputFetchStartTimestamp.IsValid() {
 			metadata["input_fetch_duration"] = executionMetadata.InputFetchCompletedTimestamp.AsTime().Sub(
-				executionMetadata.InputFetchStartTimestamp.AsTime()).Seconds()
+				executionMetadata.InputFetchStartTimestamp.AsTime(),
+			).Seconds()
 		}
 		if executionMetadata.ExecutionCompletedTimestamp.IsValid() && executionMetadata.ExecutionStartTimestamp.IsValid() {
 			metadata["wall_execution_duration"] = executionMetadata.ExecutionCompletedTimestamp.AsTime().Sub(
-				executionMetadata.ExecutionStartTimestamp.AsTime()).Seconds()
+				executionMetadata.ExecutionStartTimestamp.AsTime(),
+			).Seconds()
 		}
 		if executionMetadata.OutputUploadCompletedTimestamp.IsValid() && executionMetadata.OutputUploadStartTimestamp.IsValid() {
 			metadata["output_upload_duration"] = executionMetadata.OutputUploadCompletedTimestamp.AsTime().Sub(
-				executionMetadata.OutputUploadStartTimestamp.AsTime()).Seconds()
+				executionMetadata.OutputUploadStartTimestamp.AsTime(),
+			).Seconds()
 		}
 		if executionMetadata.WorkerCompletedTimestamp.IsValid() && executionMetadata.WorkerStartTimestamp.IsValid() {
 			metadata["total_worker_duration"] = executionMetadata.WorkerCompletedTimestamp.AsTime().Sub(
-				executionMetadata.WorkerStartTimestamp.AsTime()).Seconds()
+				executionMetadata.WorkerStartTimestamp.AsTime(),
+			).Seconds()
 		}
 		if executionMetadata.WorkerCompletedTimestamp.IsValid() && executionMetadata.QueuedTimestamp.IsValid() {
 			metadata["total_queue_and_execute_duration"] = executionMetadata.WorkerCompletedTimestamp.AsTime().Sub(
-				executionMetadata.QueuedTimestamp.AsTime()).Seconds()
+				executionMetadata.QueuedTimestamp.AsTime(),
+			).Seconds()
 		}
 
 		var unknownMetadataTypes []string

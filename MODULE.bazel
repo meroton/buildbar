@@ -4,29 +4,30 @@ bazel_dep(name = "bazel_remote_apis")
 bazel_dep(name = "com_github_buildbarn_bb_remote_execution")
 bazel_dep(name = "com_github_buildbarn_bb_storage")
 bazel_dep(name = "com_github_buildbarn_go_xdr")
-bazel_dep(name = "gazelle", version = "0.50.0")
-bazel_dep(name = "googleapis", version = "0.0.0-20260130-c0fcb356")
-bazel_dep(name = "protobuf", version = "33.5")
-bazel_dep(name = "rules_go", version = "0.59.0")
-bazel_dep(name = "rules_img", version = "0.3.4")
+bazel_dep(name = "gazelle", version = "0.51.3")
+bazel_dep(name = "googleapis", version = "0.0.0-20260525-ef19b7b7")
+bazel_dep(name = "protobuf", version = "35.0")
+bazel_dep(name = "rules_go", version = "0.61.1")
+bazel_dep(name = "rules_img", version = "0.3.11")
 bazel_dep(name = "rules_jsonnet", version = "0.7.2")
-bazel_dep(name = "toolchains_llvm", version = "1.6.0")
+bazel_dep(name = "toolchains_llvm", version = "1.7.0")
 
 git_override(
     module_name = "bazel_remote_apis",
-    commit = "b02e15a6d354e2fb553216132ccec79f3f5b39cb",
+    commit = "becdd8f9ff811df88a22d3eadd6341753d51d167",
+    patches = ["//:patches/bazel_remote_apis/upstream-pr-378.diff"],
     remote = "https://github.com/bazelbuild/remote-apis.git",
 )
 
 git_override(
     module_name = "com_github_buildbarn_bb_remote_execution",
-    commit = "feceee6d0cdc44598cd20bfe30c6a870c1667230",
+    commit = "b5d49abbef7b81a98b31cf8d08e4bb8695a0bf08",
     remote = "https://github.com/buildbarn/bb-remote-execution.git",
 )
 
 git_override(
     module_name = "com_github_buildbarn_bb_storage",
-    commit = "5ebb263666504d7d36072a6899d179c7275649c8",
+    commit = "bdd785e3d1daccb280256016129d12198ea50e39",
     remote = "https://github.com/buildbarn/bb-storage.git",
 )
 
@@ -42,6 +43,7 @@ git_override(
     patches = [
         "//:patches/rules_antlr/antlr-4.10.diff",
         "//:patches/rules_antlr/bzlmod.diff",
+        "//:patches/rules_antlr/load.diff",
     ],
     remote = "https://github.com/marcohu/rules_antlr.git",
 )
@@ -49,11 +51,6 @@ git_override(
 single_version_override(
     module_name = "gazelle",
     patches = ["//:patches/gazelle/dont-flatten-srcs.diff"],
-)
-
-single_version_override(
-    module_name = "jsonnet_go",
-    patches = ["//:patches/jsonnet_go/bazel-9.diff"],
 )
 
 single_version_override(
@@ -70,6 +67,7 @@ use_repo(
     go_deps,
     "cc_mvdan_gofumpt",
     "com_github_bazelbuild_buildtools",
+    "com_github_bazelbuild_remote_apis",
     "com_github_elastic_go_elasticsearch_v8",
     "com_github_kballard_go_shellquote",
     "com_github_prometheus_client_golang",
@@ -107,7 +105,7 @@ go_deps_dev.module_override(
 )
 go_deps_dev.module_override(
     patches = [
-        # "@com_github_buildbarn_bb_storage//:patches/org_uber_go_mock/generics.diff",
+        "@com_github_buildbarn_bb_storage//:patches/org_uber_go_mock/generics.diff",
         "@com_github_buildbarn_bb_storage//:patches/org_uber_go_mock/mocks-for-funcs.diff",
     ],
     path = "go.uber.org/mock",
@@ -115,6 +113,6 @@ go_deps_dev.module_override(
 
 llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm", dev_dependency = True)
 llvm.toolchain(
-    llvm_version = "14.0.0",
+    llvm_version = "17.0.6",
 )
 use_repo(llvm, "llvm_toolchain_llvm")

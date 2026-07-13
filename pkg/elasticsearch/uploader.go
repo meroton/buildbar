@@ -26,7 +26,8 @@ var (
 			Help:      "Amount of time spent from receiving data until it was stored in the database.",
 			Buckets:   util.DecimalExponentialBuckets(-3, 6, 2),
 		},
-		[]string{"index", "result"})
+		[]string{"index", "result"},
+	)
 )
 
 // The Uploader can be used to push documents into Elasticsearch.
