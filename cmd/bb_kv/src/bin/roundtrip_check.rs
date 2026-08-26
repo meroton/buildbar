@@ -56,7 +56,7 @@ async fn run() -> Result<(), Error> {
 
     build_fixture(src.path())?;
 
-    let mut client = RemoteClient::connect(&args.remote, args.instance_name.clone())
+    let mut client = RemoteClient::connect(&args.remote, args.instance_name.clone(), None)
         .await?
         .with_max_message_size_bytes(args.max_message_size_bytes);
     let uploaded = upload::upload_directory(&mut client, src.path()).await?;

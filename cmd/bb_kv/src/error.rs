@@ -21,6 +21,8 @@ pub enum Error {
         #[source]
         source: tonic::transport::Error,
     },
+    #[error("{remote:?}: unsupported endpoint scheme")]
+    UnsupportedEndpoint { remote: String },
     #[error("calling {rpc} (instance {instance_name:?})")]
     Rpc {
         rpc: &'static str,

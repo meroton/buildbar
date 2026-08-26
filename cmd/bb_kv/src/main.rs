@@ -111,10 +111,18 @@ enum Command {
 /// message-size ceiling.
 #[derive(clap::Args)]
 struct ConnectionArgs {
+    /// grpc://, grpcs://, http://, or https://. grpc(s):// is accepted as
+    /// an alias for http(s):// — both are the same underlying REAPI
+    /// convention.
     #[arg(long)]
     remote: String,
     #[arg(long, default_value = "")]
     instance_name: String,
+    /// Custom CA certificate (PEM) to trust for a grpcs:// or https://
+    /// remote, in addition to the system's native root certificates.
+    /// Ignored for a plaintext remote.
+    #[arg(long)]
+    ca_cert: Option<PathBuf>,
     /// Per-request byte budget bb-kv stays under when sending a batched
     /// request (BatchUpdateBlobs/BatchReadBlobs/FindMissingBlobs), i.e. how
     /// many blobs get pushed/pulled per RPC.
@@ -137,9 +145,13 @@ async fn run() -> Result<(), Error> {
             println!("{}", format_digest(&digest));
         }
         Command::Upload { path, connection } => {
-            let mut client = RemoteClient::connect(&connection.remote, connection.instance_name)
-                .await?
-                .with_max_message_size_bytes(connection.max_message_size_bytes);
+            let mut client = RemoteClient::connect(
+                &connection.remote,
+                connection.instance_name,
+                connection.ca_cert.as_deref(),
+            )
+            .await?
+            .with_max_message_size_bytes(connection.max_message_size_bytes);
             let uploaded = upload::upload_directory(&mut client, &path).await?;
             println!("{}", format_digest(&uploaded.root_digest));
         }
@@ -149,9 +161,13 @@ async fn run() -> Result<(), Error> {
             out,
             connection,
         } => {
-            let mut client = RemoteClient::connect(&connection.remote, connection.instance_name)
-                .await?
-                .with_max_message_size_bytes(connection.max_message_size_bytes);
+            let mut client = RemoteClient::connect(
+                &connection.remote,
+                connection.instance_name,
+                connection.ca_cert.as_deref(),
+            )
+            .await?
+            .with_max_message_size_bytes(connection.max_message_size_bytes);
             match (directory_digest, tree_digest) {
                 (Some(digest), None) => {
                     download::download_from_root(&mut client, &parse_digest(&digest)?, &out).await?
@@ -175,9 +191,13 @@ async fn run() -> Result<(), Error> {
             argv,
         } => {
             let input_root_digest = parse_digest(&directory_digest)?;
-            let mut client = RemoteClient::connect(&connection.remote, connection.instance_name)
-                .await?
-                .with_max_message_size_bytes(connection.max_message_size_bytes);
+            let mut client = RemoteClient::connect(
+                &connection.remote,
+                connection.instance_name,
+                connection.ca_cert.as_deref(),
+            )
+            .await?
+            .with_max_message_size_bytes(connection.max_message_size_bytes);
             let exit_code = run_cached(
                 &mut client,
                 RunOptions {
