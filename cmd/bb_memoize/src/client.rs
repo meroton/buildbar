@@ -13,13 +13,13 @@ use tonic::transport::Channel;
 
 use crate::error::Error;
 
-/// Default budget bb-kv stays under when sending a batched request
+/// Default budget bb-memoize stays under when sending a batched request
 /// (`BatchUpdateBlobs`/`BatchReadBlobs`/`FindMissingBlobs`): gRPC's common
 /// 4 MiB default max message size. This is a client-side sending budget,
 /// not a value read from the server — matches bb-storage's
 /// `maximum_received_message_size_bytes` in spirit (staying under some
 /// message-size ceiling), but that field is the receiver's hard limit;
-/// this is bb-kv's own choice of how hard to push against it.
+/// this is bb-memoize's own choice of how hard to push against it.
 pub const DEFAULT_MAX_MESSAGE_SIZE_BYTES: usize = 4 * 1024 * 1024;
 
 /// A connection to a REAPI v2 Content Addressable Storage and ActionCache
@@ -54,7 +54,7 @@ impl RemoteClient {
         })
     }
 
-    /// Overrides the per-request message-size budget bb-kv sends under
+    /// Overrides the per-request message-size budget bb-memoize sends under
     /// (default [`DEFAULT_MAX_MESSAGE_SIZE_BYTES`]).
     #[must_use]
     pub fn with_max_message_size_bytes(mut self, max_message_size_bytes: usize) -> Self {

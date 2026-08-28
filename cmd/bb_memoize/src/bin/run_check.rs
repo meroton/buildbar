@@ -16,10 +16,10 @@ mod common;
 use std::fs;
 use std::path::PathBuf;
 
-use bb_kv::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
-use bb_kv::error::{Error, IoResultExt, report};
-use bb_kv::run::{RunOptions, run_cached};
-use bb_kv::upload;
+use bb_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use bb_memoize::error::{Error, IoResultExt, report};
+use bb_memoize::run::{RunOptions, run_cached};
+use bb_memoize::upload;
 use clap::Parser;
 use common::ScratchDir;
 
@@ -69,7 +69,7 @@ async fn run() -> Result<(), Error> {
 
     // Declared output paths must be relative (REAPI's Command.output_paths
     // requirement, enforced by tree::reapi_path) — the same "wherever
-    // bb-kv run was invoked from" basis run_cached documents for real
+    // bb-memoize run was invoked from" basis run_cached documents for real
     // usage. A real caller would `cd` into their build directory first;
     // this check does the same into its scratch dir, then works in
     // relative paths from here on.

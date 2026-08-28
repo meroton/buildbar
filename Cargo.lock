@@ -136,7 +136,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bb-kv"
+name = "bb-memoize"
 version = "0.1.0"
 dependencies = [
  "bazel-remote-apis",

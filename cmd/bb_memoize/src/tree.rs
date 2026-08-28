@@ -28,7 +28,7 @@
 //! given a root `Directory` digest, [`download::download_from_root`]
 //! breadth-first-walks individual `Directory` blobs (round trips scale with
 //! tree depth); given a `Tree` digest, [`download::download_tree`] fetches
-//! the one flattened blob directly. `bb-kv download` exposes both as
+//! the one flattened blob directly. `bb-memoize download` exposes both as
 //! `--directory-digest`/`--tree-digest` for exactly this reason — use
 //! whichever one you already have.
 //!
@@ -51,7 +51,7 @@ use crate::error::{Error, IoResultExt};
 /// `digest`/`upload` commands.
 ///
 /// ```
-/// use bb_kv::tree::parse_digest;
+/// use bb_memoize::tree::parse_digest;
 ///
 /// let digest = parse_digest(
 ///     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/0",
@@ -81,7 +81,7 @@ pub fn parse_digest(s: &str) -> Result<Digest, Error> {
 /// [`parse_digest`].
 ///
 /// ```
-/// use bb_kv::tree::format_digest;
+/// use bb_memoize::tree::format_digest;
 /// use reapi::digest;
 ///
 /// let digest = digest(b"hello");
@@ -107,10 +107,10 @@ pub struct BuiltDirectory {
 /// there.
 ///
 /// ```
-/// use bb_kv::tree::build_directory;
+/// use bb_memoize::tree::build_directory;
 /// use std::fs;
 ///
-/// let dir = tempfile::Builder::new().prefix("bb-kv-doctest-build_directory-").tempdir().unwrap();
+/// let dir = tempfile::Builder::new().prefix("bb-memoize-doctest-build_directory-").tempdir().unwrap();
 /// fs::write(dir.path().join("hello.txt"), b"hello").unwrap();
 ///
 /// let built = build_directory(dir.path()).unwrap();
@@ -222,10 +222,10 @@ pub fn build_directory(path: &Path) -> Result<BuiltDirectory, Error> {
 /// `client.rs`).
 ///
 /// ```
-/// use bb_kv::tree::build_filtered_directory;
+/// use bb_memoize::tree::build_filtered_directory;
 /// use std::fs;
 ///
-/// let dir = tempfile::Builder::new().prefix("bb-kv-doctest-build_filtered_directory-").tempdir().unwrap();
+/// let dir = tempfile::Builder::new().prefix("bb-memoize-doctest-build_filtered_directory-").tempdir().unwrap();
 /// fs::create_dir_all(dir.path().join("a/b")).unwrap();
 /// fs::write(dir.path().join("a/b/c"), b"hello").unwrap();
 /// fs::write(dir.path().join("a/excluded"), b"not part of the filter").unwrap();
@@ -444,7 +444,7 @@ fn build_group(entries: &BTreeMap<String, FilterNode>) -> Result<BuiltDirectory,
 /// directory.
 ///
 /// ```
-/// use bb_kv::tree::reapi_path;
+/// use bb_memoize::tree::reapi_path;
 /// use std::path::Path;
 ///
 /// assert_eq!(reapi_path(Path::new("out/report.txt")).unwrap(), "out/report.txt");
@@ -470,9 +470,9 @@ pub fn reapi_path(path: &Path) -> Result<String, Error> {
 /// and digests that. Pure/offline — no network access.
 ///
 /// ```
-/// use bb_kv::tree::tree_digest;
+/// use bb_memoize::tree::tree_digest;
 ///
-/// let dir = tempfile::Builder::new().prefix("bb-kv-doctest-tree_digest-").tempdir().unwrap();
+/// let dir = tempfile::Builder::new().prefix("bb-memoize-doctest-tree_digest-").tempdir().unwrap();
 /// std::fs::write(dir.path().join("hello.txt"), b"hello").unwrap();
 ///
 /// let digest = tree_digest(dir.path()).unwrap();

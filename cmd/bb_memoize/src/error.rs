@@ -112,7 +112,7 @@ pub enum Error {
 /// `anyhow`'s `.with_context(|| ...)` (as opposed to eager `.context(...)`).
 ///
 /// ```
-/// use bb_kv::error::IoResultExt;
+/// use bb_memoize::error::IoResultExt;
 /// use std::path::Path;
 ///
 /// let path = Path::new("/does/not/exist");
