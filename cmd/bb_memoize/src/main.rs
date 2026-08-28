@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use bb_kv::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
-use bb_kv::error::{Error, report};
-use bb_kv::run::{self, RunOptions, run_cached};
-use bb_kv::tree::{build_filtered_directory, format_digest, parse_digest};
-use bb_kv::{download, upload};
+use bb_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use bb_memoize::error::{Error, report};
+use bb_memoize::run::{self, RunOptions, run_cached};
+use bb_memoize::tree::{build_filtered_directory, format_digest, parse_digest};
+use bb_memoize::{download, upload};
 use clap::Parser;
 
 #[derive(Parser)]
@@ -70,7 +70,7 @@ enum Command {
         no_cache: bool,
         #[command(flatten)]
         connection: ConnectionArgs,
-        /// A file path (relative to where `bb-kv run` is invoked from) the
+        /// A file path (relative to where `bb-memoize run` is invoked from) the
         /// command is expected to produce; captured and cached, restored
         /// verbatim on a cache hit. Repeatable.
         #[arg(long = "output-file")]
@@ -123,7 +123,7 @@ struct ConnectionArgs {
     /// Ignored for a plaintext remote.
     #[arg(long)]
     ca_cert: Option<PathBuf>,
-    /// Per-request byte budget bb-kv stays under when sending a batched
+    /// Per-request byte budget bb-memoize stays under when sending a batched
     /// request (BatchUpdateBlobs/BatchReadBlobs/FindMissingBlobs), i.e. how
     /// many blobs get pushed/pulled per RPC.
     #[arg(long = "max-message-size", default_value_t = DEFAULT_MAX_MESSAGE_SIZE_BYTES)]

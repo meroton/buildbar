@@ -1,10 +1,10 @@
 Lightweight content-addressable build avoidance for your pipeline
 =================================================================
 
-``bb-kv`` wraps any command execution
+``bb-memoize`` wraps any command execution
 with a content addressable caching layer using the `remote execution api`_.
 You decide the command and what external state should be the cache key.
-``bb-kv`` then runs it if it has not already been executed
+``bb-memoize`` then runs it if it has not already been executed
 and creates a cache entry with the output files and logs.
 If someone else has already run the command
 you of course get their results.
@@ -34,14 +34,14 @@ you must use a proper build system like Bazel.
 Action key, the digest
 ----------------------
 
-``bb-kv run`` caches results based on a key
+``bb-memoize run`` caches results based on a key
 that encodes the command and an (input root) directory.
 Through the ``--directory-digest`` flag you can provide the directory part
 and the command is simply the command arguments given as positional arguments.
 Neither environment nor external state or file access information for the command itself is used,
 as this is not meant to be a hermetic cache.
 
-To help in creating the directory digest you can run ``bb-kv digest``
+To help in creating the directory digest you can run ``bb-memoize digest``
 and point it to a file or directory (or files within a directory).
 See its help for more information about how to index only parts of directory structures.
 A common use-case is to have hardware testing of big flash images
@@ -96,7 +96,7 @@ to have a longer retention or other functionality.
 Authentication
 ++++++++++++++
 
-bb-kv has not yet implemented support for authenticated access to the RBE.
+bb-memoize has not yet implemented support for authenticated access to the RBE.
 
 Uploading the CAS-indexed files
 --------------------------------

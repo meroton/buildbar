@@ -89,7 +89,7 @@ pub async fn download_from_root(
 /// restoring an `ActionResult`'s `output_directories`, whose `tree_digest`
 /// field is specified as a `Tree`-message digest per REAPI — see
 /// `tree.rs`'s module doc for the full Tree-vs-Directory distinction).
-/// Also exposed directly as `bb-kv download --tree-digest` for callers who
+/// Also exposed directly as `bb-memoize download --tree-digest` for callers who
 /// already have a `Tree` digest in hand (e.g. printed by another tool).
 pub async fn download_tree(
     client: &mut RemoteClient,

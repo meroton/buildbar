@@ -20,7 +20,7 @@ use crate::{download, upload};
 // deprecated) could be threaded through from a `--platform KEY=VALUE`
 // flag, for servers that route/bucket ActionCache entries by platform
 // properties. Left out of v1 — everything here runs on whatever machine
-// invokes `bb-kv run`, so there's been no need for it yet.
+// invokes `bb-memoize run`, so there's been no need for it yet.
 
 /// Everything `run_cached` needs beyond the `RemoteClient` itself.
 pub struct RunOptions {
@@ -59,11 +59,11 @@ pub struct RunOptions {
 fn build_action(opts: &RunOptions) -> Result<(Blob, Blob), Error> {
     // working_directory is deliberately always empty (= the input root):
     // REAPI defines it as relative, so cache portability across machines is
-    // fine in principle, but bb-kv doesn't actually `.current_dir()` the
-    // child anywhere — it always runs wherever `bb-kv run` itself was
+    // fine in principle, but bb-memoize doesn't actually `.current_dir()` the
+    // child anywhere — it always runs wherever `bb-memoize run` itself was
     // invoked from. A configurable value here would describe something
     // this code doesn't do, which is worse than not having the knob. The
-    // same "wherever bb-kv run was invoked from" basis is what every
+    // same "wherever bb-memoize run was invoked from" basis is what every
     // declared output path below is resolved against, both when capturing
     // (reading it off disk after the command ran) and when restoring (on a
     // cache hit).
@@ -99,7 +99,7 @@ fn build_action(opts: &RunOptions) -> Result<(Blob, Blob), Error> {
 /// The REAPI Action digest `run_cached(opts)` would use as its ActionCache
 /// key, computed without running anything or touching the network. Useful
 /// to know in advance — e.g. to manually scrub/evict that specific entry
-/// from the ActionCache. Exposed as `bb-kv action-digest`.
+/// from the ActionCache. Exposed as `bb-memoize action-digest`.
 pub fn action_digest(opts: &RunOptions) -> Result<Digest, Error> {
     let (_, action_blob) = build_action(opts)?;
     Ok(action_blob.digest)
@@ -108,7 +108,7 @@ pub fn action_digest(opts: &RunOptions) -> Result<Digest, Error> {
 /// Checks the ActionCache for `opts`'s `Action`, and either replays a prior
 /// result or actually runs `opts.argv` and records the outcome. Returns
 /// the child's exit code either way — a nonzero exit from the wrapped
-/// command is not itself a `bb-kv` failure.
+/// command is not itself a `bb-memoize` failure.
 pub async fn run_cached(client: &mut RemoteClient, opts: RunOptions) -> Result<i32, Error> {
     let (command_blob, action_blob) = build_action(&opts)?;
     let action_digest = action_blob.digest.clone();
@@ -123,7 +123,7 @@ pub async fn run_cached(client: &mut RemoteClient, opts: RunOptions) -> Result<i
         && let Some(cached) = client.action_result(&action_digest).await?
     {
         eprintln!(
-            "bb-kv: cache hit ({}/{})",
+            "bb-memoize: cache hit ({}/{})",
             action_digest.hash, action_digest.size_bytes
         );
         replay(client, &cached, &action_digest).await?;
@@ -240,8 +240,8 @@ async fn capture_output_file(client: &mut RemoteClient, path: &Path) -> Result<O
 /// Captures `path` as an `OutputDirectory` by uploading it exactly like the
 /// primary `upload` command does (`upload::upload_directory`) — same
 /// dedup-by-hash behavior, same two digests produced, just used for the
-/// `tree_digest`/`root_directory_digest` half instead of what `bb-kv
-/// upload` prints.
+/// `tree_digest`/`root_directory_digest` half instead of what
+/// `bb-memoize upload` prints.
 async fn capture_output_directory(
     client: &mut RemoteClient,
     path: &Path,
@@ -356,7 +356,7 @@ async fn write_stream(
 /// Spawns `argv[0] argv[1..]`, streaming its stdout/stderr through to ours
 /// live while also capturing each into a buffer (for the `ActionResult`).
 ///
-/// The child inherits bb-kv's own ambient environment untouched, by design
+/// The child inherits bb-memoize's own ambient environment untouched, by design
 /// — see `run_cached`'s doc comment for why an allow-list isn't worth
 /// building here.
 async fn spawn_and_tee(argv: &[String]) -> Result<(i32, Vec<u8>, Vec<u8>), Error> {
