@@ -1,0 +1,21 @@
+load("@rules_rust//rust:defs.bzl", "rust_doc_test", "rust_library")
+
+rust_library(
+    name = "reapi",
+    srcs = ["src/lib.rs"],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@crates//:bazel-remote-apis",
+        "@crates//:hex",
+        "@crates//:prost",
+        "@crates//:sha2",
+        "@crates//:thiserror",
+        "@crates//:tonic",
+    ],
+)
+
+rust_doc_test(
+    name = "reapi_doc_test",
+    crate = ":reapi",
+)

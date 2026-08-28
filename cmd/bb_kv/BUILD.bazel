@@ -1,0 +1,75 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_doc_test", "rust_library")
+
+rust_library(
+    name = "bb_kv",
+    srcs = [
+        "src/client.rs",
+        "src/download.rs",
+        "src/error.rs",
+        "src/lib.rs",
+        "src/run.rs",
+        "src/tree.rs",
+        "src/upload.rs",
+    ],
+    edition = "2024",
+    deps = [
+        "//lib/reapi",
+        "@crates//:bazel-remote-apis",
+        "@crates//:prost",
+        "@crates//:tempfile",
+        "@crates//:thiserror",
+        "@crates//:tokio",
+        "@crates//:tonic",
+    ],
+)
+
+rust_doc_test(
+    name = "bb_kv_doc_test",
+    crate = ":bb_kv",
+)
+
+rust_binary(
+    name = "bb-kv",
+    srcs = ["src/main.rs"],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":bb_kv",
+        "@crates//:clap",
+        "@crates//:tokio",
+    ],
+)
+
+# Manual E2E checks (not run by `bazel test`) — exercise `bb_kv` against a
+# real, already-running Buildbarn. See each file's module doc for usage.
+rust_binary(
+    name = "roundtrip_check",
+    srcs = [
+        "src/bin/common/mod.rs",
+        "src/bin/roundtrip_check.rs",
+    ],
+    crate_root = "src/bin/roundtrip_check.rs",
+    edition = "2024",
+    deps = [
+        ":bb_kv",
+        "@crates//:clap",
+        "@crates//:tempfile",
+        "@crates//:tokio",
+    ],
+)
+
+rust_binary(
+    name = "run_check",
+    srcs = [
+        "src/bin/common/mod.rs",
+        "src/bin/run_check.rs",
+    ],
+    crate_root = "src/bin/run_check.rs",
+    edition = "2024",
+    deps = [
+        ":bb_kv",
+        "@crates//:clap",
+        "@crates//:tempfile",
+        "@crates//:tokio",
+    ],
+)
