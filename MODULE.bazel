@@ -27,6 +27,13 @@ git_override(
 git_override(
     module_name = "com_github_buildbarn_bb_storage",
     commit = "5ebb263666504d7d36072a6899d179c7275649c8",
+    # js_run_binary defaults to a scrubbed action env (no PATH at all), which
+    # only works because glibc falls back to a compiled-in /bin:/usr/bin --
+    # paths that don't exist on NixOS. use_default_shell_env restores normal
+    # PATH forwarding (via --action_env/--host_action_env) for this target.
+    patch_cmds = [
+        "sed -i '/tool = \":purgecss\",/a\\    use_default_shell_env = True,' pkg/otel/BUILD.bazel",
+    ],
     remote = "https://github.com/buildbarn/bb-storage.git",
 )
 
