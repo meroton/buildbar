@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use bazel_remote_apis::build::bazel::remote::execution::v2::{Digest, Tree};
+use reapi::Blob;
 
 use crate::client::RemoteClient;
 use crate::error::Error;
-use crate::tree::{Blob, build_directory};
+use crate::tree::build_directory;
 
 /// The two digests that identify an uploaded directory tree: the root
 /// `Directory` digest (what REAPI's `Action.input_root_digest` and

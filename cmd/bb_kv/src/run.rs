@@ -7,12 +7,13 @@ use std::process::Stdio;
 use bazel_remote_apis::build::bazel::remote::execution::v2::{
     Action, ActionResult, Command, Digest, OutputDirectory, OutputFile,
 };
+use reapi::Blob;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command as ChildCommand;
 
 use crate::client::RemoteClient;
 use crate::error::{Error, IoResultExt};
-use crate::tree::{Blob, format_digest, reapi_path};
+use crate::tree::{format_digest, reapi_path};
 use crate::{download, upload};
 
 // TODO(platform): `Action.platform` (REAPI v2.2+; `Command.platform` is

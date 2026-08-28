@@ -43,69 +43,9 @@ use std::path::{Path, PathBuf};
 use bazel_remote_apis::build::bazel::remote::execution::v2::{
     Digest, Directory, DirectoryNode, FileNode, SymlinkNode, Tree,
 };
-use prost::Message;
-use sha2::{Digest as _, Sha256};
+use reapi::{Blob, digest_message};
 
 use crate::error::{Error, IoResultExt};
-
-/// SHA-256 digest of a raw byte slice.
-///
-/// ```
-/// use bb_kv::tree::digest_bytes;
-///
-/// let digest = digest_bytes(b"hello");
-/// assert_eq!(digest.size_bytes, 5);
-/// assert_eq!(digest.hash.len(), 64);
-/// ```
-// TODO: Parameterize the hash function?
-pub fn digest_bytes(bytes: &[u8]) -> Digest {
-    Digest {
-        hash: hex::encode(Sha256::digest(bytes)),
-        size_bytes: bytes.len() as i64,
-    }
-}
-
-/// SHA-256 digest of a protobuf message's canonical serialized bytes.
-pub fn digest_message(msg: &impl Message) -> Digest {
-    digest_bytes(&msg.encode_to_vec())
-}
-
-/// A blob's content, tagged with the digest that addresses it in CAS.
-// Deliberately doesn't derive `Clone`: every real call site only ever
-// needs the (cheap) `digest` again after a blob's content has been moved
-// into an upload call, not the blob itself — cloning `digest` there keeps
-// that cheap and explicit, instead of `Blob` inviting an accidental clone
-// of potentially large `data`.
-// TODO: Parameterize the hash function?
-pub struct Blob {
-    pub digest: Digest,
-    pub data: Vec<u8>,
-}
-
-impl Blob {
-    /// Digests `data` and wraps both together.
-    ///
-    /// ```
-    /// use bb_kv::tree::Blob;
-    ///
-    /// let blob = Blob::new(b"hello".to_vec());
-    /// assert_eq!(blob.digest.size_bytes, 5);
-    /// assert_eq!(blob.data, b"hello");
-    /// ```
-    pub fn new(data: Vec<u8>) -> Self {
-        let digest = digest_bytes(&data);
-        Self { digest, data }
-    }
-
-    /// Serializes and digests a protobuf message in one pass — unlike
-    /// separately calling `digest_message(msg)` and `msg.encode_to_vec()`,
-    /// which each serialize `msg` independently.
-    pub fn from_message(msg: &impl Message) -> Self {
-        let data = msg.encode_to_vec();
-        let digest = digest_bytes(&data);
-        Self { digest, data }
-    }
-}
 
 /// Parses a `<hex-hash>/<size-bytes>` digest string, as printed by the
 /// `digest`/`upload` commands.
@@ -141,7 +81,8 @@ pub fn parse_digest(s: &str) -> Result<Digest, Error> {
 /// [`parse_digest`].
 ///
 /// ```
-/// use bb_kv::tree::{digest_bytes, format_digest};
+/// use bb_kv::tree::format_digest;
+/// use reapi::digest_bytes;
 ///
 /// let digest = digest_bytes(b"hello");
 /// assert_eq!(format_digest(&digest), format!("{}/{}", digest.hash, digest.size_bytes));

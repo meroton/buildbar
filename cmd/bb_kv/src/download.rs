@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 
 use bazel_remote_apis::build::bazel::remote::execution::v2::{Digest, Directory, Tree};
 use prost::Message;
+use reapi::digest_message;
 
 use crate::client::RemoteClient;
 use crate::error::{Error, IoResultExt};
-use crate::tree::digest_message;
 
 /// Fetches `root_digest` (a root `Directory` digest, as printed by
 /// `digest`/`upload`) and materializes the whole tree under `out_dir`.

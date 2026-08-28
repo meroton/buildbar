@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["cmd/bb_kv", "cmd/bb_dispatch", "lib/reapi"]
