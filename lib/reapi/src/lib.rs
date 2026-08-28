@@ -13,14 +13,14 @@ use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 /// SHA-256 digest of a raw byte slice.
 ///
 /// ```
-/// use reapi::digest_bytes;
+/// use reapi::digest;
 ///
-/// let digest = digest_bytes(b"hello");
-/// assert_eq!(digest.size_bytes, 5);
-/// assert_eq!(digest.hash.len(), 64);
+/// let d = digest(b"hello");
+/// assert_eq!(d.size_bytes, 5);
+/// assert_eq!(d.hash.len(), 64);
 /// ```
 // TODO: Parameterize the hash function?
-pub fn digest_bytes(bytes: &[u8]) -> Digest {
+pub fn digest(bytes: &[u8]) -> Digest {
     Digest {
         hash: hex::encode(Sha256::digest(bytes)),
         size_bytes: bytes.len() as i64,
@@ -29,7 +29,7 @@ pub fn digest_bytes(bytes: &[u8]) -> Digest {
 
 /// SHA-256 digest of a protobuf message's canonical serialized bytes.
 pub fn digest_message(msg: &impl Message) -> Digest {
-    digest_bytes(&msg.encode_to_vec())
+    digest(&msg.encode_to_vec())
 }
 
 /// A blob's content, tagged with the digest that addresses it in CAS.
@@ -56,7 +56,7 @@ impl Blob {
     /// assert_eq!(blob.data, b"hello");
     /// ```
     pub fn new(data: Vec<u8>) -> Self {
-        let digest = digest_bytes(&data);
+        let digest = digest(&data);
         Self { digest, data }
     }
 
@@ -65,7 +65,7 @@ impl Blob {
     /// which each serialize `msg` independently.
     pub fn from_message(msg: &impl Message) -> Self {
         let data = msg.encode_to_vec();
-        let digest = digest_bytes(&data);
+        let digest = digest(&data);
         Self { digest, data }
     }
 }

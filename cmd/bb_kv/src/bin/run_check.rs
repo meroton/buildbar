@@ -37,7 +37,9 @@ struct Args {
     keep_temporary_files: bool,
 }
 
-#[tokio::main]
+// Sequential miss-then-hit check against one action — no concurrent
+// fan-out to benefit from true OS-thread parallelism.
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(err) = run().await {
         report(&err);

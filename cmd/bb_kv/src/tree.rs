@@ -82,9 +82,9 @@ pub fn parse_digest(s: &str) -> Result<Digest, Error> {
 ///
 /// ```
 /// use bb_kv::tree::format_digest;
-/// use reapi::digest_bytes;
+/// use reapi::digest;
 ///
-/// let digest = digest_bytes(b"hello");
+/// let digest = digest(b"hello");
 /// assert_eq!(format_digest(&digest), format!("{}/{}", digest.hash, digest.size_bytes));
 /// ```
 pub fn format_digest(digest: &Digest) -> String {
