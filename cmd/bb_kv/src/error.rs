@@ -15,14 +15,13 @@ pub enum Error {
         #[source]
         source: std::io::Error,
     },
-    #[error("connecting to CAS at {remote}")]
-    Connect {
-        remote: String,
-        #[source]
-        source: tonic::transport::Error,
-    },
-    #[error("{remote:?}: unsupported endpoint scheme")]
-    UnsupportedEndpoint { remote: String },
+    /// Connecting to CAS, in every sense `reapi::connect` can fail:
+    /// transport errors, an unsupported endpoint scheme, or a bad CA
+    /// certificate. Transparent: `reapi::Error`'s own `Display` already
+    /// says exactly what went wrong, so this variant adds nothing of its
+    /// own on top.
+    #[error(transparent)]
+    Connect(#[from] reapi::Error),
     #[error("calling {rpc} (instance {instance_name:?})")]
     Rpc {
         rpc: &'static str,

@@ -8,10 +8,10 @@ use bazel_remote_apis::build::bazel::remote::execution::v2::{
     GetActionResultRequest, UpdateActionResultRequest, batch_update_blobs_request, compressor,
     digest_function,
 };
-use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
+use reapi::Blob;
+use tonic::transport::Channel;
 
-use crate::error::{Error, IoResultExt};
-use crate::tree::Blob;
+use crate::error::Error;
 
 /// Default budget bb-kv stays under when sending a batched request
 /// (`BatchUpdateBlobs`/`BatchReadBlobs`/`FindMissingBlobs`): gRPC's common
@@ -45,7 +45,7 @@ impl RemoteClient {
         instance_name: String,
         ca_cert: Option<&Path>,
     ) -> Result<Self, Error> {
-        let channel = connect_channel(remote, ca_cert).await?;
+        let channel = reapi::connect(remote, ca_cert).await?;
         Ok(Self {
             inner: ContentAddressableStorageClient::new(channel.clone()),
             action_cache: ActionCacheClient::new(channel),
@@ -228,51 +228,6 @@ impl RemoteClient {
             })?;
         Ok(())
     }
-}
-
-/// Resolves `remote` to a connected `Channel`, applying TLS if the
-/// (normalized) scheme calls for it.
-async fn connect_channel(remote: &str, ca_cert: Option<&Path>) -> Result<Channel, Error> {
-    let normalized = normalize_endpoint(remote)?;
-    let mut endpoint =
-        Endpoint::from_shared(normalized.clone()).map_err(|source| Error::Connect {
-            remote: remote.to_owned(),
-            source,
-        })?;
-    if normalized.starts_with("https://") {
-        let mut tls = ClientTlsConfig::new().with_native_roots();
-        if let Some(path) = ca_cert {
-            let pem = std::fs::read(path).context(|| "reading CA certificate", path)?;
-            tls = tls.ca_certificate(Certificate::from_pem(pem));
-        }
-        endpoint = endpoint.tls_config(tls).map_err(|source| Error::Connect {
-            remote: remote.to_owned(),
-            source,
-        })?;
-    }
-    endpoint.connect().await.map_err(|source| Error::Connect {
-        remote: remote.to_owned(),
-        source,
-    })
-}
-
-/// Accepts `grpc://`/`grpcs://` as aliases for `http://`/`https://` (common
-/// REAPI convention), and passes `http://`/`https://` through unchanged.
-/// Anything else is rejected — better an evident error here than a
-/// confusing failure once it reaches `Endpoint`.
-fn normalize_endpoint(remote: &str) -> Result<String, Error> {
-    if let Some(rest) = remote.strip_prefix("grpc://") {
-        return Ok(format!("http://{rest}"));
-    }
-    if let Some(rest) = remote.strip_prefix("grpcs://") {
-        return Ok(format!("https://{rest}"));
-    }
-    if remote.starts_with("http://") || remote.starts_with("https://") {
-        return Ok(remote.to_owned());
-    }
-    Err(Error::UnsupportedEndpoint {
-        remote: remote.to_owned(),
-    })
 }
 
 /// Splits `items` into batches, flushing whenever the next item would push
