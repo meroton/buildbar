@@ -109,6 +109,36 @@
             {
                "name": "Golint",
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
+            },
+            {
+               "name": "Install Rust toolchain",
+               "run": "rustup toolchain install"
+            },
+            # The fmt/clippy steps below don't reference this cache via any
+            # flag — cargo's caching is purely path-based (it always checks
+            # ~/.cargo/registry and target/ for existing state, no matter
+            # what). This step's only job is to restore those paths from a
+            # prior run before cargo runs, and to save them again afterward
+            # (via its own automatic post-step, baked into the action).
+            # Removing it doesn't break correctness, only silently slows
+            # down every run from here on.
+            {
+               "name": "Rust cache",
+               "uses": "Swatinem/rust-cache@v2",
+               "with": {
+                  "workspaces": "."
+               }
+            },
+            {
+               "name": "Rust: check formatting",
+               "run": "cargo fmt --all --check"
+            },
+            # TODO: convert to Bazel rust_clippy/rustfmt_test aspects once
+            # Rust lint checks are Bazel-driven like the Go ones above;
+            # plain cargo for now.
+            {
+               "name": "Rust: clippy",
+               "run": "cargo clippy --all-targets --locked -- -Dwarnings"
             }
          ]
       }

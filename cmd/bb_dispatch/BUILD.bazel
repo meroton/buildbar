@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("//tools:rust.bzl", "rust_binary")
 
 rust_binary(
     name = "bb_dispatch",

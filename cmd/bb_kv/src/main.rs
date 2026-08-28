@@ -130,7 +130,11 @@ struct ConnectionArgs {
     max_message_size_bytes: usize,
 }
 
-#[tokio::main]
+// A one-shot CLI, not a server: no work here benefits from true OS-thread
+// parallelism (see run.rs's `spawn_and_tee`, which concurrently pumps a
+// child's stdout/stderr via `try_join!` — that's task interleaving on one
+// thread, not multi-threading).
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(err) = run().await {
         report(&err);

@@ -10,5 +10,5 @@ prost = "0.14.4"
 reapi = { path = "../../lib/reapi" }
 tempfile = "3.27.0"
 thiserror = "2.0.20"
-tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "io-util", "io-std"] }
+tokio = { version = "1.53.1", features = ["rt", "macros", "process", "io-util", "io-std"] }
 tonic = "0.14.6"

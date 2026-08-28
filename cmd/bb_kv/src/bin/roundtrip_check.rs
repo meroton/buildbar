@@ -36,7 +36,9 @@ struct Args {
     keep_temporary_files: bool,
 }
 
-#[tokio::main]
+// One fixture, uploaded then downloaded sequentially — no concurrent
+// fan-out to benefit from true OS-thread parallelism.
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(err) = run().await {
         report(&err);
