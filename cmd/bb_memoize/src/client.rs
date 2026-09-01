@@ -239,7 +239,18 @@ impl RemoteClient {
 /// total message size, so there's nothing concrete to defend against
 /// beyond the message-size budget itself, which already bounds request
 /// size regardless of how many items make it up.
-fn chunk_by_size<T>(
+///
+/// ```
+/// use bb_memoize::client::chunk_by_size;
+///
+/// let batches = chunk_by_size(vec![1, 2, 3, 4], 5, |_| 2);
+/// assert_eq!(batches, vec![vec![1, 2], vec![3, 4]]);
+///
+/// // A single oversized item still ships alone, in its own batch.
+/// let batches = chunk_by_size(vec![1, 2], 1, |_| 10);
+/// assert_eq!(batches, vec![vec![1], vec![2]]);
+/// ```
+pub fn chunk_by_size<T>(
     items: Vec<T>,
     max_message_size_bytes: usize,
     size_of: impl Fn(&T) -> usize,
@@ -275,7 +286,24 @@ fn chunk_by_size<T>(
 /// than sending an explicit `Status { code: 0, .. }` — the spec doesn't
 /// document this either way, but it's evidently the real-world convention,
 /// so absent is treated as OK rather than rejected.
-fn check_blob_status(
+///
+/// ```
+/// use bazel_remote_apis::build::bazel::remote::execution::v2::Digest;
+/// use bazel_remote_apis::google::rpc::Status;
+/// use bb_memoize::client::check_blob_status;
+///
+/// let digest = Digest { hash: "abc".to_owned(), size_bytes: 3 };
+///
+/// // Absent status means success (see this function's doc comment for why).
+/// let ok = check_blob_status("BatchUpdateBlobs", Some(digest.clone()), None).unwrap();
+/// assert_eq!(ok, digest);
+///
+/// // A non-zero status code is a real failure.
+/// let status = Status { code: 5, message: "not found".to_owned(), details: vec![] };
+/// let err = check_blob_status("BatchUpdateBlobs", Some(digest), Some(status)).unwrap_err();
+/// assert!(err.to_string().contains("not found"));
+/// ```
+pub fn check_blob_status(
     rpc: &'static str,
     digest: Option<Digest>,
     status: Option<bazel_remote_apis::google::rpc::Status>,
