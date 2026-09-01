@@ -56,7 +56,32 @@ pub struct RunOptions {
 /// can't fully account for (ambient files, network, timestamps are equally
 /// unhashed). Hashing just that one channel would buy false confidence,
 /// not correctness. Full hermeticity is Bazel's job, not this tool's.
-fn build_action(opts: &RunOptions) -> Result<(Blob, Blob), Error> {
+///
+/// ```
+/// use bazel_remote_apis::build::bazel::remote::execution::v2::{Action, Command};
+/// use bb_memoize::run::{RunOptions, build_action};
+/// use prost::Message;
+///
+/// let opts = RunOptions {
+///     input_root_digest: reapi::digest(b"fixture-input-tree"),
+///     argv: vec!["echo".to_owned(), "hello".to_owned()],
+///     output_files: vec!["out.txt".into()],
+///     output_dirs: vec![],
+///     no_cache: true,
+/// };
+/// let (command_blob, action_blob) = build_action(&opts).unwrap();
+///
+/// let command = Command::decode(command_blob.data.as_slice()).unwrap();
+/// assert_eq!(command.arguments, opts.argv);
+/// assert_eq!(command.output_paths, vec!["out.txt".to_owned()]);
+/// assert!(command.environment_variables.is_empty());
+///
+/// let action = Action::decode(action_blob.data.as_slice()).unwrap();
+/// assert_eq!(action.command_digest, Some(command_blob.digest));
+/// assert_eq!(action.input_root_digest, Some(opts.input_root_digest));
+/// assert!(action.do_not_cache);
+/// ```
+pub fn build_action(opts: &RunOptions) -> Result<(Blob, Blob), Error> {
     // working_directory is deliberately always empty (= the input root):
     // REAPI defines it as relative, so cache portability across machines is
     // fine in principle, but bb-memoize doesn't actually `.current_dir()` the

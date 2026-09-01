@@ -134,6 +134,14 @@ impl<T> IoResultExt<T> for std::io::Result<T> {
 }
 
 /// Prints an error and its full `#[source]` chain to stderr, one level per
+/// line — see [`write_report`], which does the actual formatting and is
+/// what's tested (this is a thin wrapper hardcoding the stderr sink, which
+/// a doctest can't easily capture).
+pub fn report(err: &Error) {
+    write_report(err, std::io::stderr()).expect("writing to stderr");
+}
+
+/// Writes an error and its full `#[source]` chain to `out`, one level per
 /// line, e.g.:
 ///
 /// ```text
@@ -147,16 +155,36 @@ impl<T> IoResultExt<T> for std::io::Result<T> {
 /// lower-level error in a level that adds nothing of its own, so printing
 /// every `#[source]` link unconditionally would show the same text twice
 /// in a row for no reason.
-pub fn report(err: &Error) {
-    eprintln!("Error: {err}");
+///
+/// ```
+/// use bb_memoize::error::{Error, write_report};
+/// use std::path::PathBuf;
+///
+/// let source = std::io::Error::from_raw_os_error(2); // ENOENT
+/// let err = Error::Io {
+///     action: "reading".to_owned(),
+///     path: PathBuf::from("/tmp/does-not-exist"),
+///     source,
+/// };
+///
+/// let mut out = Vec::new();
+/// write_report(&err, &mut out).unwrap();
+/// assert_eq!(
+///     String::from_utf8(out).unwrap(),
+///     "Error: reading /tmp/does-not-exist\nCaused by: No such file or directory (os error 2)\n",
+/// );
+/// ```
+pub fn write_report(err: &Error, mut out: impl std::io::Write) -> std::io::Result<()> {
+    writeln!(out, "Error: {err}")?;
     let mut source = std::error::Error::source(err);
     let mut previous = err.to_string();
     while let Some(e) = source {
         let message = e.to_string();
         if message != previous {
-            eprintln!("Caused by: {message}");
+            writeln!(out, "Caused by: {message}")?;
         }
         previous = message;
         source = e.source();
     }
+    Ok(())
 }

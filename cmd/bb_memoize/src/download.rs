@@ -162,7 +162,55 @@ async fn write_files(
 /// Recursively creates `out_dir`'s subdirectories and symlinks, and
 /// collects `(path, digest, is_executable)` for every file so their
 /// content can be fetched in one batched call rather than one RPC per file.
-fn materialize(
+///
+/// ```
+/// use std::collections::HashMap;
+/// use bazel_remote_apis::build::bazel::remote::execution::v2::{
+///     Directory, DirectoryNode, FileNode, SymlinkNode,
+/// };
+/// use bb_memoize::download::materialize;
+/// use reapi::{digest, digest_message};
+///
+/// let out = tempfile::Builder::new().prefix("bb-memoize-doctest-materialize-").tempdir().unwrap();
+///
+/// let file_digest = digest(b"hello");
+/// let child = Directory {
+///     files: vec![FileNode {
+///         name: "hello.txt".to_owned(),
+///         digest: Some(file_digest.clone()),
+///         is_executable: true,
+///         node_properties: None,
+///     }],
+///     directories: vec![],
+///     symlinks: vec![],
+///     node_properties: None,
+/// };
+/// let child_digest = digest_message(&child);
+///
+/// let root = Directory {
+///     files: vec![],
+///     directories: vec![DirectoryNode { name: "sub".to_owned(), digest: Some(child_digest.clone()) }],
+///     symlinks: vec![SymlinkNode {
+///         name: "link".to_owned(),
+///         target: "sub/hello.txt".to_owned(),
+///         node_properties: None,
+///     }],
+///     node_properties: None,
+/// };
+///
+/// let lookup: HashMap<String, &Directory> = [(child_digest.hash.clone(), &child)].into_iter().collect();
+/// let tree_digest = digest(b"tree");
+/// let mut file_targets = Vec::new();
+/// materialize(&root, out.path(), &lookup, &tree_digest, &mut file_targets).unwrap();
+///
+/// assert_eq!(file_targets, vec![(out.path().join("sub/hello.txt"), file_digest, true)]);
+/// assert!(out.path().join("sub").is_dir());
+/// assert_eq!(
+///     std::fs::read_link(out.path().join("link")).unwrap(),
+///     std::path::Path::new("sub/hello.txt"),
+/// );
+/// ```
+pub fn materialize(
     dir: &Directory,
     out_dir: &Path,
     lookup: &HashMap<String, &Directory>,
