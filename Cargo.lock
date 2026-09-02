@@ -136,20 +136,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bb-memoize"
-version = "0.1.0"
-dependencies = [
- "bazel-remote-apis",
- "clap",
- "prost",
- "reapi",
- "tempfile",
- "thiserror",
- "tokio",
- "tonic",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -713,7 +699,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
-name = "private-bb-dispatch"
+name = "private-re-dispatch"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -798,6 +784,20 @@ checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "re-memoize"
+version = "0.1.0"
+dependencies = [
+ "bazel-remote-apis",
+ "clap",
+ "prost",
+ "reapi",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tonic",
 ]
 
 [[package]]

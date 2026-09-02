@@ -1,7 +1,7 @@
 load("//tools:rust.bzl", "rust_binary")
 
 rust_binary(
-    name = "bb_dispatch",
+    name = "re_dispatch",
     srcs = [
         "src/digest.rs",
         "src/execute.rs",
