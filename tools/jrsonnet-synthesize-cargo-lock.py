@@ -3,10 +3,9 @@
 lockfile JSON, for `crate.from_specs()` repos that need BOTH a `lockfile`
 (cargo-bazel format, already resolved) and a `cargo_lockfile` (real
 Cargo.lock format) but were never spliced from an actual Cargo.toml, so no
-real Cargo.lock exists to reuse. Every package/version/checksum/dependency
-edge here is real data pulled straight from the JSON lockfile -- nothing
-fabricated. Driven by regenerate.sh; see that script's doc comment for when
-and how to run this.
+real Cargo.lock exists to reuse. Reads the JSON lockfile from stdin, writes
+the Cargo.lock to stdout. Driven by regenerate.sh; see that script's doc
+comment for when and how to run this.
 """
 
 import json
@@ -18,9 +17,7 @@ def toml_string(s: str) -> str:
 
 
 def main() -> None:
-    src_path, out_path = sys.argv[1], sys.argv[2]
-    with open(src_path) as f:
-        data = json.load(f)
+    data = json.load(sys.stdin)
 
     packages = []
     for crate_id, crate in sorted(data["crates"].items()):
@@ -67,9 +64,9 @@ def main() -> None:
         "# This file is automatically @generated.",
         "# It is not intended for manual editing.",
         "version = 4",
-        "",
     ]
     for pkg in packages:
+        lines.append("")
         lines.append("[[package]]")
         lines.append(f"name = {toml_string(pkg['name'])}")
         lines.append(f"version = {toml_string(pkg['version'])}")
@@ -82,12 +79,10 @@ def main() -> None:
             for dep in pkg["dependencies"]:
                 lines.append(f" {toml_string(dep)},")
             lines.append("]")
-        lines.append("")
 
-    with open(out_path, "w") as f:
-        f.write("\n".join(lines).rstrip() + "\n")
+    sys.stdout.write("\n".join(lines) + "\n")
 
-    print(f"wrote {len(packages)} packages to {out_path}")
+    print(f"Wrote {len(packages)} packages", file=sys.stderr)
 
 
 if __name__ == "__main__":

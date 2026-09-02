@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Any filesystem operation. `action` names what was being attempted
-    /// ("reading", "listing directory entries in", "writing", ...) —
+    /// ("Reading", "Listing directory entries in", "Writing", ...) —
     /// `std::io::Error` already carries *what* went wrong (`.kind()`), the
     /// only thing missing is *where*, so that's the only thing added here.
     #[error("{action} {path}")]
@@ -22,14 +22,14 @@ pub enum Error {
     /// own on top.
     #[error(transparent)]
     Connect(#[from] reapi::Error),
-    #[error("calling {rpc} (instance {instance_name:?})")]
+    #[error("Calling {rpc} (instance {instance_name:?})")]
     Rpc {
         rpc: &'static str,
         instance_name: String,
         #[source]
         source: tonic::Status,
     },
-    #[error("decoding {what} blob (digest {hash}/{size_bytes})")]
+    #[error("Decoding {what} blob (digest {hash}/{size_bytes})")]
     Decode {
         what: &'static str,
         hash: String,
@@ -37,20 +37,20 @@ pub enum Error {
         #[source]
         source: prost::DecodeError,
     },
-    #[error("blob {hash}/{size_bytes}: server reported {status}")]
+    #[error("Blob {hash}/{size_bytes}: server reported {status}")]
     BlobStatus {
         hash: String,
         size_bytes: i64,
         status: String,
     },
-    #[error("invalid digest {input:?}: expected \"<hex-hash>/<size-bytes>\"")]
+    #[error("Invalid digest {input:?}: expected \"<hex-hash>/<size-bytes>\"")]
     InvalidDigest { input: String },
     /// The fetched `Tree` message is internally inconsistent (missing
     /// root, or a `DirectoryNode` referencing a digest not present in
     /// `Tree.children`) — a server protocol violation, not a decode
     /// failure (the bytes parsed fine as a `Tree`, the *content* is
     /// wrong), so distinct from `Decode`.
-    #[error("malformed Tree (digest {hash}/{size_bytes}): {reason}")]
+    #[error("Malformed Tree (digest {hash}/{size_bytes}): {reason}")]
     MalformedTree {
         hash: String,
         size_bytes: i64,
@@ -63,32 +63,32 @@ pub enum Error {
     /// rather than defaulting — defaulting `status` in particular would
     /// silently read as "OK" (`Status::default().code == 0`), which could
     /// mask a real failure.
-    #[error("malformed {rpc} response: {reason}")]
+    #[error("Malformed {rpc} response: {reason}")]
     MalformedResponse {
         rpc: &'static str,
         reason: &'static str,
     },
     /// A declared `--output-file`/`--output-dir` didn't exist on disk after
     /// the command ran.
-    #[error("declared output {path:?} was not produced by the command")]
+    #[error("Declared output {path:?} was not produced by the command")]
     MissingOutput { path: PathBuf },
     /// A declared output exists but isn't something `run` knows how to
     /// capture yet (a symlink) — see `tree.rs`'s module-level rationale for
     /// why this isn't handled: it's an unbuilt branch of an already-unbuilt
     /// feature, not a hard problem in itself.
-    #[error("declared output {path:?}: {reason}")]
+    #[error("Declared output {path:?}: {reason}")]
     UnsupportedOutput { path: PathBuf, reason: &'static str },
     /// A cached `ActionResult` is internally inconsistent (an `OutputFile`
     /// or `OutputDirectory` missing its digest) — a server/cache protocol
     /// violation, mirroring `MalformedTree` above for the same reason: the
     /// bytes decoded fine, the *content* doesn't hold up its own invariants.
-    #[error("malformed ActionResult (action {action_digest}): {reason}")]
+    #[error("Malformed ActionResult (action {action_digest}): {reason}")]
     MalformedActionResult {
         action_digest: String,
         reason: &'static str,
     },
     /// The child process named by `run`'s argv[0] failed to start.
-    #[error("running {program:?}")]
+    #[error("Running {program:?}")]
     Spawn {
         program: String,
         #[source]
@@ -104,8 +104,8 @@ pub enum Error {
 /// Attaches an [`Error::Io`] action/path to a `std::io::Result` without
 /// losing the ability to `?`-chain it.
 ///
-/// `action` is a closure, not a plain value: a bare argument (`.context("reading", path)`,
-/// or worse `.context(format!("creating symlink to {target} at"), path)`) would be
+/// `action` is a closure, not a plain value: a bare argument (`.context("Reading", path)`,
+/// or worse `.context(format!("Creating symlink to {target} at"), path)`) would be
 /// evaluated by the caller *before* `context` is even entered — unconditionally,
 /// on the success path too. Taking `impl FnOnce() -> S` defers that to
 /// `map_err`'s closure, which only runs at all if `self` is `Err`, mirroring
@@ -116,8 +116,8 @@ pub enum Error {
 /// use std::path::Path;
 ///
 /// let path = Path::new("/does/not/exist");
-/// let err = std::fs::read(path).context(|| "reading", path).unwrap_err();
-/// assert_eq!(err.to_string(), "reading /does/not/exist");
+/// let err = std::fs::read(path).context(|| "Reading", path).unwrap_err();
+/// assert_eq!(err.to_string(), "Reading /does/not/exist");
 /// ```
 pub trait IoResultExt<T> {
     fn context<S: Into<String>>(self, action: impl FnOnce() -> S, path: &Path) -> Result<T, Error>;
@@ -145,7 +145,7 @@ pub fn report(err: &Error) {
 /// line, e.g.:
 ///
 /// ```text
-/// Error: reading /tmp/does-not-exist
+/// Error: Reading /tmp/does-not-exist
 /// Caused by: No such file or directory (os error 2)
 /// ```
 ///
@@ -162,7 +162,7 @@ pub fn report(err: &Error) {
 ///
 /// let source = std::io::Error::from_raw_os_error(2); // ENOENT
 /// let err = Error::Io {
-///     action: "reading".to_owned(),
+///     action: "Reading".to_owned(),
 ///     path: PathBuf::from("/tmp/does-not-exist"),
 ///     source,
 /// };
@@ -171,7 +171,7 @@ pub fn report(err: &Error) {
 /// write_report(&err, &mut out).unwrap();
 /// assert_eq!(
 ///     String::from_utf8(out).unwrap(),
-///     "Error: reading /tmp/does-not-exist\nCaused by: No such file or directory (os error 2)\n",
+///     "Error: Reading /tmp/does-not-exist\nCaused by: No such file or directory (os error 2)\n",
 /// );
 /// ```
 pub fn write_report(err: &Error, mut out: impl std::io::Write) -> std::io::Result<()> {

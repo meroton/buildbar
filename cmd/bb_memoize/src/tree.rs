@@ -125,18 +125,18 @@ pub fn build_directory(path: &Path) -> Result<BuiltDirectory, Error> {
     let mut descendants = Vec::new();
     let mut file_blobs = Vec::new();
 
-    let entries = fs::read_dir(path).context(|| "listing directory entries in", path)?;
+    let entries = fs::read_dir(path).context(|| "Listing directory entries in", path)?;
     for entry in entries {
-        let entry = entry.context(|| "listing directory entries in", path)?;
+        let entry = entry.context(|| "Listing directory entries in", path)?;
         let name = entry.file_name().to_string_lossy().into_owned();
         let entry_path = entry.path();
         let file_type = entry
             .file_type()
-            .context(|| "reading file type of", &entry_path)?;
+            .context(|| "Reading file type of", &entry_path)?;
 
         if file_type.is_symlink() {
             let target =
-                fs::read_link(&entry_path).context(|| "reading symlink target for", &entry_path)?;
+                fs::read_link(&entry_path).context(|| "Reading symlink target for", &entry_path)?;
             symlinks.push(SymlinkNode {
                 name,
                 target: target.to_string_lossy().into_owned(),
@@ -152,11 +152,11 @@ pub fn build_directory(path: &Path) -> Result<BuiltDirectory, Error> {
             descendants.extend(built.descendants);
             file_blobs.extend(built.file_blobs);
         } else {
-            let content = fs::read(&entry_path).context(|| "reading", &entry_path)?;
+            let content = fs::read(&entry_path).context(|| "Reading", &entry_path)?;
             let blob = Blob::new(content);
             let is_executable = entry
                 .metadata()
-                .context(|| "reading metadata for", &entry_path)?
+                .context(|| "Reading metadata for", &entry_path)?
                 .permissions()
                 .mode()
                 & 0o100
@@ -249,7 +249,7 @@ pub fn build_filtered_directory(root: &Path, filters: &[PathBuf]) -> Result<Buil
         return build_directory(root);
     }
 
-    let canonical_root = fs::canonicalize(root).context(|| "resolving --root", root)?;
+    let canonical_root = fs::canonicalize(root).context(|| "Resolving --root", root)?;
 
     let mut trie: BTreeMap<String, FilterNode> = BTreeMap::new();
     for filter in filters {
@@ -257,7 +257,7 @@ pub fn build_filtered_directory(root: &Path, filters: &[PathBuf]) -> Result<Buil
         // exactly as given — relative to the working directory, not
         // `root` — so it tab-completes normally and doesn't need
         // re-typing when `--root` changes.
-        let metadata = fs::symlink_metadata(filter).context(|| "reading metadata for", filter)?;
+        let metadata = fs::symlink_metadata(filter).context(|| "Reading metadata for", filter)?;
         let leaf = match metadata.file_type() {
             file_type if file_type.is_symlink() => FilterNode::Symlink(filter.clone()),
             file_type if file_type.is_dir() => FilterNode::Directory(filter.clone()),
@@ -308,7 +308,7 @@ fn position_relative_to_root(filter: &Path, canonical_root: &Path) -> Result<Vec
         _ => Path::new("."),
     };
     let name = filter.file_name().ok_or_else(not_under_root)?;
-    let canonical_parent = fs::canonicalize(parent).context(|| "resolving parent of", filter)?;
+    let canonical_parent = fs::canonicalize(parent).context(|| "Resolving parent of", filter)?;
     let absolute_filter = canonical_parent.join(name);
 
     let relative = absolute_filter
@@ -378,7 +378,7 @@ fn build_group(entries: &BTreeMap<String, FilterNode>) -> Result<BuiltDirectory,
                 path,
                 is_executable,
             } => {
-                let content = fs::read(path).context(|| "reading", path)?;
+                let content = fs::read(path).context(|| "Reading", path)?;
                 let blob = Blob::new(content);
                 let digest = blob.digest.clone();
                 file_blobs.push(blob);
@@ -390,7 +390,7 @@ fn build_group(entries: &BTreeMap<String, FilterNode>) -> Result<BuiltDirectory,
                 });
             }
             FilterNode::Symlink(path) => {
-                let target = fs::read_link(path).context(|| "reading symlink target for", path)?;
+                let target = fs::read_link(path).context(|| "Reading symlink target for", path)?;
                 symlinks.push(SymlinkNode {
                     name: name.clone(),
                     target: target.to_string_lossy().into_owned(),

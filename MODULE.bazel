@@ -172,7 +172,7 @@ llvm.toolchain(
 )
 use_repo(llvm, "llvm_toolchain_llvm")
 
-# Rust toolchain: registers for the host platform (linux_amd64 on our CI
+# Registers a Rust toolchain for the host platform (linux_amd64 on our CI
 # runners). Cross-compiled release platforms are a separate, later step —
 # not set up here yet.
 rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")

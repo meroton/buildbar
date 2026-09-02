@@ -4,7 +4,7 @@
 # call (it fetches a `jrsonnet` binary via crate_universe, but its
 # MODULE.bazel is missing the `lockfile`/`cargo_lockfile` a non-root
 # consumer requires — see the comment above rules_jsonnet's
-# single_version_override in //MODULE.bazel for the full story).
+# single_version_override in //:MODULE.bazel for the full story).
 #
 # Run this whenever rules_jsonnet's pinned `jrsonnet` version changes —
 # either because we bumped our own `rules_jsonnet` bazel_dep to a newer
@@ -12,7 +12,7 @@
 # crate.spec()/crate.annotation() calls changed. Until then, both
 # lockfiles are static, correct, and don't need touching.
 #
-# What it does: fetches the given rules_jsonnet release tarball, adds a
+# What it does: Fetches the given rules_jsonnet release tarball, adds a
 # `lockfile` attribute to its from_specs call, and runs it as its own
 # root module with CARGO_BAZEL_REPIN=1 to get a real cargo-bazel-format
 # lockfile (crate_universe_jsonnet.lock) — genuine crate resolution, not
@@ -30,19 +30,19 @@
 set -eu -o pipefail
 
 test $# = 1 || {
-    echo "usage: $0 <rules_jsonnet-version>" >&2
+    echo "Usage: $0 <rules_jsonnet-version>" >&2
     exit 1
 }
 version=$1
 
-repo_root=$(git rev-parse --show-toplevel)
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
 patches_dir="$repo_root/patches/rules_jsonnet"
 synthesizer="$repo_root/tools/jrsonnet-synthesize-cargo-lock.py"
 
 scratch=$(mktemp -d --suffix -jrsonnet-regenerate-lockfiles)
 trap 'rm -rf "$scratch"' EXIT
 
-echo "fetching rules_jsonnet $version..." >&2
+echo "Fetching rules_jsonnet $version..." >&2
 curl -fsSL "https://github.com/bazelbuild/rules_jsonnet/releases/download/$version/rules_jsonnet-$version.tar.gz" \
     -o "$scratch/rules_jsonnet.tar.gz"
 tar xzf "$scratch/rules_jsonnet.tar.gz" -C "$scratch"
@@ -52,7 +52,7 @@ sed -i '/host_tools = "@rust_host_tools_jsonnet",/a\    lockfile = "//:crate_uni
     "$checkout/MODULE.bazel"
 touch "$checkout/crate_universe_jsonnet.lock"
 
-# Generic, portable NixOS/exec-env fixes (see //MODULE.bazel's own
+# Generic, portable NixOS/exec-env fixes (see //:MODULE.bazel's own
 # comments for why these are needed) — not the buildbar repo's own
 # .bazelrc, which carries buildbar-specific flags this standalone
 # checkout doesn't need.
@@ -62,7 +62,7 @@ build --action_env=PATH
 build --host_action_env=PATH
 EOF
 
-echo "repinning (this builds a real rust toolchain + jrsonnet's dependency graph, may take a while)..." >&2
+echo "Repinning (this builds a real rust toolchain + jrsonnet's dependency graph, may take a while)..." >&2
 (
     cd "$checkout"
     CARGO_BAZEL_REPIN=1 bazel --nohome_rc build @crates_jsonnet//...
@@ -71,7 +71,7 @@ echo "repinning (this builds a real rust toolchain + jrsonnet's dependency graph
 
 resolved_lock="$checkout/crate_universe_jsonnet.lock"
 cargo_lock="$scratch/crate_universe_jsonnet.cargo.lock"
-python3 "$synthesizer" "$resolved_lock" "$cargo_lock"
+python3 "$synthesizer" < "$resolved_lock" > "$cargo_lock"
 
 new_file_diff() {
     target_path=$1
@@ -88,5 +88,5 @@ new_file_diff() {
 new_file_diff crate_universe_jsonnet.lock "$resolved_lock" > "$patches_dir/lockfile-content.diff"
 new_file_diff crate_universe_jsonnet.cargo.lock "$cargo_lock" > "$patches_dir/cargo-lock-content.diff"
 
-echo "wrote $patches_dir/lockfile-content.diff and $patches_dir/cargo-lock-content.diff" >&2
-echo "review the diff, then re-verify with: bazel mod graph" >&2
+echo "Wrote $patches_dir/lockfile-content.diff and $patches_dir/cargo-lock-content.diff" >&2
+echo "Review the diff, then re-verify with: bazel mod graph" >&2
