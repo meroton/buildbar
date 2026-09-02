@@ -51,36 +51,36 @@
                   "path": "bb_slow_generic_runner.linux_amd64"
                }
             },
-            # bb-memoize and bb_dispatch are Rust binaries with only a
+            # re-memoize and re_dispatch are Rust binaries with only a
             # linux_amd64 rust toolchain registered (see //:MODULE.bazel) —
             # unlike the Go binaries above, they aren't built for every
             # other platform below, only this one leg.
             {
                "if": "matrix.host.upload",
-               "name": "linux_amd64: copy bb-memoize",
-               "run": "rm -f bb-memoize.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/bb_memoize:bb-memoize $(pwd)/bb-memoize.linux_amd64"
+               "name": "linux_amd64: copy re-memoize",
+               "run": "rm -f re-memoize.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_memoize:re-memoize $(pwd)/re-memoize.linux_amd64"
             },
             {
                "if": "matrix.host.upload",
-               "name": "linux_amd64: upload bb-memoize",
+               "name": "linux_amd64: upload re-memoize",
                "uses": "actions/upload-artifact@v4",
                "with": {
-                  "name": "bb-memoize.linux_amd64",
-                  "path": "bb-memoize.linux_amd64"
+                  "name": "re-memoize.linux_amd64",
+                  "path": "re-memoize.linux_amd64"
                }
             },
             {
                "if": "matrix.host.upload",
-               "name": "linux_amd64: copy bb_dispatch",
-               "run": "rm -f bb_dispatch.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/bb_dispatch:bb_dispatch $(pwd)/bb_dispatch.linux_amd64"
+               "name": "linux_amd64: copy re_dispatch",
+               "run": "rm -f re_dispatch.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_dispatch:re_dispatch $(pwd)/re_dispatch.linux_amd64"
             },
             {
                "if": "matrix.host.upload",
-               "name": "linux_amd64: upload bb_dispatch",
+               "name": "linux_amd64: upload re_dispatch",
                "uses": "actions/upload-artifact@v4",
                "with": {
-                  "name": "bb_dispatch.linux_amd64",
-                  "path": "bb_dispatch.linux_amd64"
+                  "name": "re_dispatch.linux_amd64",
+                  "path": "re_dispatch.linux_amd64"
                }
             },
             {

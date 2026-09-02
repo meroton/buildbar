@@ -15,12 +15,12 @@ use std::fs;
 use std::os::unix::fs::{PermissionsExt, symlink};
 use std::path::Path;
 
-use bb_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
-use bb_memoize::error::{Error, IoResultExt, report};
-use bb_memoize::tree::build_directory;
-use bb_memoize::{download, upload};
 use clap::Parser;
 use common::ScratchDir;
+use re_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use re_memoize::error::{Error, IoResultExt, report};
+use re_memoize::tree::build_directory;
+use re_memoize::{download, upload};
 
 #[derive(Parser)]
 struct Args {

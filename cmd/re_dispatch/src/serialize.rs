@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn rejects_escape_through_intermediate_symlink() -> Result<()> {
         let test_dir = std::env::temp_dir().join(format!(
-            "private-bb-dispatch-symlink-test-{}",
+            "private-re-dispatch-symlink-test-{}",
             Uuid::new_v4()
         ));
         let root = test_dir.join("root");

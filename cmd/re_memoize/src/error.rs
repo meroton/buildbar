@@ -112,7 +112,7 @@ pub enum Error {
 /// `anyhow`'s `.with_context(|| ...)` (as opposed to eager `.context(...)`).
 ///
 /// ```
-/// use bb_memoize::error::IoResultExt;
+/// use re_memoize::error::IoResultExt;
 /// use std::path::Path;
 ///
 /// let path = Path::new("/does/not/exist");
@@ -157,7 +157,7 @@ pub fn report(err: &Error) {
 /// in a row for no reason.
 ///
 /// ```
-/// use bb_memoize::error::{Error, write_report};
+/// use re_memoize::error::{Error, write_report};
 /// use std::path::PathBuf;
 ///
 /// let source = std::io::Error::from_raw_os_error(2); // ENOENT
