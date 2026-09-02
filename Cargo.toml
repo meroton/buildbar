@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["cmd/re_dispatch", "cmd/re_memoize", "lib/reapi"]

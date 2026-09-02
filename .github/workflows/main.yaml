@@ -21,7 +21,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64'",
                "name": "linux_amd64: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -51,10 +51,42 @@
                   "path": "bb_slow_generic_runner.linux_amd64"
                }
             },
+            # re-memoize and re_dispatch are Rust binaries with only a
+            # linux_amd64 rust toolchain registered (see //:MODULE.bazel) —
+            # unlike the Go binaries above, they aren't built for every
+            # other platform below, only this one leg.
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: copy re-memoize",
+               "run": "rm -f re-memoize.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_memoize:re-memoize $(pwd)/re-memoize.linux_amd64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: upload re-memoize",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "re-memoize.linux_amd64",
+                  "path": "re-memoize.linux_amd64"
+               }
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: copy re_dispatch",
+               "run": "rm -f re_dispatch.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_dispatch:re_dispatch $(pwd)/re_dispatch.linux_amd64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: upload re_dispatch",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "re_dispatch.linux_amd64",
+                  "path": "re_dispatch.linux_amd64"
+               }
+            },
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_amd64_v3'",
                "name": "linux_amd64_v3: build${{ matrix.host.platform_name == 'linux_amd64_v3' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64_v3' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64_v3 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64_v3' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64_v3 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -87,7 +119,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_386'",
                "name": "linux_386: build${{ matrix.host.platform_name == 'linux_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_amd64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_386 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -120,7 +152,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm'",
                "name": "linux_arm: build${{ matrix.host.platform_name == 'linux_arm' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -153,7 +185,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'linux_arm64'",
                "name": "linux_arm64: build${{ matrix.host.platform_name == 'linux_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'linux_arm64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -186,7 +218,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_amd64'",
                "name": "darwin_amd64: build${{ matrix.host.platform_name == 'darwin_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_amd64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -219,7 +251,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'darwin_arm64'",
                "name": "darwin_arm64: build${{ matrix.host.platform_name == 'darwin_arm64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'darwin_arm64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:darwin_arm64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -252,7 +284,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'freebsd_amd64'",
                "name": "freebsd_amd64: build${{ matrix.host.platform_name == 'freebsd_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:freebsd_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'freebsd_amd64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:freebsd_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -285,7 +317,7 @@
             {
                "if": "matrix.host.cross_compile || matrix.host.platform_name == 'windows_amd64'",
                "name": "windows_amd64: build${{ matrix.host.platform_name == 'windows_amd64' && ' and test' || '' }}",
-               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
+               "run": "bazel ${{ matrix.host.platform_name == 'windows_amd64' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --platforms=@com_github_buildbarn_bb_storage//tools/platforms:windows_amd64 --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} //..."
             },
             {
                "if": "matrix.host.upload",
@@ -379,6 +411,36 @@
             {
                "name": "Golint",
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
+            },
+            {
+               "name": "Install Rust toolchain",
+               "run": "rustup toolchain install"
+            },
+            # The fmt/clippy steps below don't reference this cache via any
+            # flag — cargo's caching is purely path-based (it always checks
+            # ~/.cargo/registry and target/ for existing state, no matter
+            # what). This step's only job is to restore those paths from a
+            # prior run before cargo runs, and to save them again afterward
+            # (via its own automatic post-step, baked into the action).
+            # Removing it doesn't break correctness, only silently slows
+            # down every run from here on.
+            {
+               "name": "Rust cache",
+               "uses": "Swatinem/rust-cache@v2",
+               "with": {
+                  "workspaces": "."
+               }
+            },
+            {
+               "name": "Rust: check formatting",
+               "run": "cargo fmt --all --check"
+            },
+            # TODO: convert to Bazel rust_clippy/rustfmt_test aspects once
+            # Rust lint checks are Bazel-driven like the Go ones above;
+            # plain cargo for now.
+            {
+               "name": "Rust: clippy",
+               "run": "cargo clippy --all-targets --locked -- -Dwarnings"
             }
          ]
       },

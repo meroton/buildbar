@@ -236,7 +236,7 @@ fn print_action_output(output: &ActionOutput) -> Result<()> {
     }
     if output.stdout.is_empty() && output.stderr.is_empty() {
         eprintln!(
-            "remote action produced no stdout/stderr; exit_code={}",
+            "Remote action produced no stdout/stderr; exit_code={}",
             output.exit_code
         );
     }
@@ -649,6 +649,8 @@ fn credential_metadata(
     let Some(helper) = helper else {
         return Ok(MetadataMap::new());
     };
+    // TODO: If there is always a need to configure another flag is one is
+    // given can't we just have one flag with two values?
     let uri = credential_helper_uri
         .context("--credential-helper-uri is required when using --credential-helper")?;
     let mut child = ProcessCommand::new(helper)

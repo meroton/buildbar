@@ -1,0 +1,13 @@
+diff --git MODULE.bazel MODULE.bazel
+index e33d726..c33bd8f 100644
+--- MODULE.bazel
++++ MODULE.bazel
+@@ -54,5 +54,8 @@ crate.annotation(
+ crate.from_specs(
+     name = "crates_jsonnet",
+     host_tools = "@rust_host_tools_jsonnet",
++    lockfile = "//:crate_universe_jsonnet.lock",
++    cargo_lockfile = "//:crate_universe_jsonnet.cargo.lock",
++    skip_cargo_lockfile_overwrite = True,
+ )
+ use_repo(crate, "crates_jsonnet")

@@ -1,0 +1,30 @@
+load("//tools:rust.bzl", "rust_binary")
+
+rust_binary(
+    name = "re_dispatch",
+    srcs = [
+        "src/digest.rs",
+        "src/execute.rs",
+        "src/main.rs",
+        "src/serialize.rs",
+    ],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/reapi",
+        "@crates//:anyhow",
+        "@crates//:bazel-remote-apis",
+        "@crates//:clap",
+        "@crates//:futures-util",
+        "@crates//:hyper-util",
+        "@crates//:prost",
+        "@crates//:rayon",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:tokio",
+        "@crates//:tonic",
+        "@crates//:tower",
+        "@crates//:uuid",
+        "@crates//:walkdir",
+    ],
+)

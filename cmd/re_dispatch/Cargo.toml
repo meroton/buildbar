@@ -1,5 +1,5 @@
 [package]
-name = "private-bb-dispatch"
+name = "private-re-dispatch"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,9 +11,9 @@ futures-util = "0.3.33"
 hyper-util = "0.1.20"
 prost = "0.14.4"
 rayon = "1.12.0"
+reapi = { path = "../../lib/reapi" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
-sha2 = "0.11.0"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 tonic = { version = "0.14.6", features = ["transport", "tls-ring", "tls-native-roots"] }
 tower = { version = "0.5.3", features = ["util"] }

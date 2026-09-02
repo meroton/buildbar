@@ -25,3 +25,5 @@ go.work
 
 # MODULE.bazel.lock does not order modules in a stable way.
 MODULE.bazel.lock
+
+/target/
