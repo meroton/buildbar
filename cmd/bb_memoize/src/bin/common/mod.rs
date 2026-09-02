@@ -29,11 +29,11 @@ impl ScratchDir {
         // instead of scattered directly in the OS temp dir among
         // everyone else's.
         let base = std::env::temp_dir().join("bb-memoize");
-        fs::create_dir_all(&base).context(|| "creating directory", &base)?;
+        fs::create_dir_all(&base).context(|| "Creating directory", &base)?;
         let dir = tempfile::Builder::new()
             .prefix(&format!("{label}-"))
             .tempdir_in(&base)
-            .context(|| "creating temp dir under", &base)?;
+            .context(|| "Creating temp dir under", &base)?;
         Ok(if keep {
             Self::Kept(dir.keep())
         } else {

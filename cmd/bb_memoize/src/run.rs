@@ -244,7 +244,7 @@ async fn capture_output_file(client: &mut RemoteClient, path: &Path) -> Result<O
             reason: "symlinked outputs aren't supported yet",
         });
     }
-    let content = fs::read(path).context(|| "reading", path)?;
+    let content = fs::read(path).context(|| "Reading", path)?;
     let blob = Blob::new(content);
     let digest = blob.digest.clone();
     let is_executable = metadata.permissions().mode() & 0o100 != 0;
@@ -298,7 +298,7 @@ fn symlink_metadata(path: &Path) -> Result<fs::Metadata, Error> {
             }
         } else {
             Error::Io {
-                action: "reading metadata for".to_owned(),
+                action: "Reading metadata for".to_owned(),
                 path: path.to_owned(),
                 source,
             }
@@ -333,7 +333,7 @@ async fn restore_output_files(
     for (file, digest) in output_files.iter().zip(&digests) {
         let path = PathBuf::from(&file.path);
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).context(|| "creating directory", parent)?;
+            fs::create_dir_all(parent).context(|| "Creating directory", parent)?;
         }
         let data = blobs
             .remove(&digest.hash)
@@ -342,13 +342,13 @@ async fn restore_output_files(
                 size_bytes: digest.size_bytes,
                 status: "server returned no response for this digest".to_owned(),
             })?;
-        fs::write(&path, &data).context(|| "writing", &path)?;
+        fs::write(&path, &data).context(|| "Writing", &path)?;
         let mode = match file.is_executable {
             true => 0o755,
             false => 0o644,
         };
         fs::set_permissions(&path, fs::Permissions::from_mode(mode))
-            .context(|| "setting permissions on", &path)?;
+            .context(|| "Setting permissions on", &path)?;
     }
     Ok(())
 }
@@ -366,13 +366,13 @@ async fn write_stream(
     if !raw.is_empty() {
         out.write_all(raw)
             .await
-            .context(|| "writing", Path::new(label))?;
+            .context(|| "Writing", Path::new(label))?;
     } else if let Some(digest) = digest {
         let mut blobs = client.download_blobs(std::slice::from_ref(digest)).await?;
         if let Some(data) = blobs.remove(&digest.hash) {
             out.write_all(&data)
                 .await
-                .context(|| "writing", Path::new(label))?;
+                .context(|| "Writing", Path::new(label))?;
         }
     }
     Ok(())
@@ -432,13 +432,13 @@ async fn pump(
         let n = src
             .read(&mut buf)
             .await
-            .context(|| format!("reading child {label}"), Path::new(label))?;
+            .context(|| format!("Reading child {label}"), Path::new(label))?;
         if n == 0 {
             return Ok(captured);
         }
         dst.write_all(&buf[..n])
             .await
-            .context(|| "writing", Path::new(label))?;
+            .context(|| "Writing", Path::new(label))?;
         captured.extend_from_slice(&buf[..n]);
     }
 }

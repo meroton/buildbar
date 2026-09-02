@@ -53,14 +53,14 @@ async fn run() -> Result<(), Error> {
     let fixture = ScratchDir::new("run-check-fixture", args.keep_temporary_files)?;
     let scratch = ScratchDir::new("run-check-scratch", args.keep_temporary_files)?;
     if args.keep_temporary_files {
-        println!("fixture dir: {}", fixture.path().display());
-        println!("scratch dir: {}", scratch.path().display());
+        println!("Fixture dir: {}", fixture.path().display());
+        println!("Scratch dir: {}", scratch.path().display());
     }
 
     let input = fixture.path().join("input");
-    fs::create_dir(&input).context(|| "creating directory", &input)?;
+    fs::create_dir(&input).context(|| "Creating directory", &input)?;
     let hello = input.join("hello.txt");
-    fs::write(&hello, b"hello").context(|| "writing", &hello)?;
+    fs::write(&hello, b"hello").context(|| "Writing", &hello)?;
 
     let mut client = RemoteClient::connect(&args.remote, args.instance_name.clone(), None)
         .await?
@@ -74,7 +74,7 @@ async fn run() -> Result<(), Error> {
     // this check does the same into its scratch dir, then works in
     // relative paths from here on.
     std::env::set_current_dir(scratch.path())
-        .context(|| "changing directory to", scratch.path())?;
+        .context(|| "Changing directory to", scratch.path())?;
 
     // The command's side effects: appending one byte to `counter` (proof it
     // actually executed, independent of anything else it does, and outside
@@ -120,19 +120,19 @@ async fn run() -> Result<(), Error> {
 
     let first_exit = run_cached(&mut client, opts()).await?;
     assert_eq!(first_exit, 0, "first run: expected exit code 0");
-    let after_first = fs::read_to_string(&counter).context(|| "reading", &counter)?;
+    let after_first = fs::read_to_string(&counter).context(|| "Reading", &counter)?;
     assert_eq!(
         after_first, "x",
         "first run: expected the command to have actually executed once"
     );
-    let out_file_content = fs::read_to_string(&out_file).context(|| "reading", &out_file)?;
+    let out_file_content = fs::read_to_string(&out_file).context(|| "Reading", &out_file)?;
     assert_eq!(
         out_file_content,
         "produced\n",
         "first run: unexpected {} content",
         out_file.display()
     );
-    let nested_content = fs::read_to_string(&nested_file).context(|| "reading", &nested_file)?;
+    let nested_content = fs::read_to_string(&nested_file).context(|| "Reading", &nested_file)?;
     assert_eq!(
         nested_content,
         "dir-content\n",
@@ -143,19 +143,19 @@ async fn run() -> Result<(), Error> {
     // Delete both declared outputs before the second (cached) call, so
     // their reappearing below is proof restoration actually happened, not
     // just that the first run's files were never cleaned up.
-    fs::remove_file(&out_file).context(|| "removing", &out_file)?;
-    fs::remove_dir_all(&out_dir).context(|| "removing", &out_dir)?;
+    fs::remove_file(&out_file).context(|| "Removing", &out_file)?;
+    fs::remove_dir_all(&out_dir).context(|| "Removing", &out_dir)?;
 
     let second_exit = run_cached(&mut client, opts()).await?;
     assert_eq!(second_exit, 0, "second (cached) run: expected exit code 0");
-    let after_second = fs::read_to_string(&counter).context(|| "reading", &counter)?;
+    let after_second = fs::read_to_string(&counter).context(|| "Reading", &counter)?;
     assert_eq!(
         after_second, "x",
         "second run: counter changed ({after_first:?} -> {after_second:?}) \
          - the command ran again instead of replaying the cached result"
     );
     let restored_out_file = fs::read_to_string(&out_file)
-        .context(|| "reading", &out_file)
+        .context(|| "Reading", &out_file)
         .expect("second (cached) run: expected out.txt to have been restored");
     assert_eq!(
         restored_out_file,
@@ -164,7 +164,7 @@ async fn run() -> Result<(), Error> {
         out_file.display()
     );
     let restored_nested = fs::read_to_string(&nested_file)
-        .context(|| "reading", &nested_file)
+        .context(|| "Reading", &nested_file)
         .expect("second (cached) run: expected the output directory to have been restored");
     assert_eq!(
         restored_nested,

@@ -236,7 +236,7 @@ fn print_action_output(output: &ActionOutput) -> Result<()> {
     }
     if output.stdout.is_empty() && output.stderr.is_empty() {
         eprintln!(
-            "remote action produced no stdout/stderr; exit_code={}",
+            "Remote action produced no stdout/stderr; exit_code={}",
             output.exit_code
         );
     }

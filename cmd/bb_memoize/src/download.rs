@@ -44,7 +44,7 @@ pub async fn download_from_root(
                 size_bytes: digest.size_bytes,
                 source,
             })?;
-            fs::create_dir_all(target).context(|| "creating directory", target)?;
+            fs::create_dir_all(target).context(|| "Creating directory", target)?;
 
             for entry in &dir.directories {
                 let child_digest = entry.digest.clone().ok_or_else(|| Error::MalformedTree {
@@ -65,7 +65,7 @@ pub async fn download_from_root(
             for symlink in &dir.symlinks {
                 let link_path = target.join(&symlink.name);
                 std::os::unix::fs::symlink(&symlink.target, &link_path).context(
-                    || format!("creating symlink to {} at", symlink.target),
+                    || format!("Creating symlink to {} at", symlink.target),
                     &link_path,
                 )?;
             }
@@ -147,13 +147,13 @@ async fn write_files(
         let data = contents
             .get(&digest.hash)
             .ok_or_else(|| no_response_for(&digest))?;
-        fs::write(&path, data).context(|| "writing", &path)?;
+        fs::write(&path, data).context(|| "Writing", &path)?;
         let mode = match is_executable {
             true => 0o755,
             false => 0o644,
         };
         fs::set_permissions(&path, fs::Permissions::from_mode(mode))
-            .context(|| "setting permissions on", &path)?;
+            .context(|| "Setting permissions on", &path)?;
     }
 
     Ok(())
@@ -217,7 +217,7 @@ pub fn materialize(
     tree_digest: &Digest,
     file_targets: &mut Vec<(PathBuf, Digest, bool)>,
 ) -> Result<(), Error> {
-    fs::create_dir_all(out_dir).context(|| "creating directory", out_dir)?;
+    fs::create_dir_all(out_dir).context(|| "Creating directory", out_dir)?;
 
     for entry in &dir.directories {
         // A `DirectoryNode`/`FileNode` without a `digest` is a malformed
@@ -257,7 +257,7 @@ pub fn materialize(
     for symlink in &dir.symlinks {
         let link_path = out_dir.join(&symlink.name);
         std::os::unix::fs::symlink(&symlink.target, &link_path).context(
-            || format!("creating symlink to {} at", symlink.target),
+            || format!("Creating symlink to {} at", symlink.target),
             &link_path,
         )?;
     }

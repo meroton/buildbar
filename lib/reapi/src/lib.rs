@@ -73,15 +73,15 @@ impl Blob {
 /// Errors from [`connect`].
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("connecting to {remote}")]
+    #[error("Connecting to {remote}")]
     Connect {
         remote: String,
         #[source]
         source: tonic::transport::Error,
     },
-    #[error("{remote:?}: unsupported endpoint scheme")]
+    #[error("Unsupported endpoint scheme {remote:?}")]
     UnsupportedEndpoint { remote: String },
-    #[error("reading CA certificate {path:?}")]
+    #[error("Reading CA certificate {path:?}")]
     ReadCaCert {
         path: std::path::PathBuf,
         #[source]

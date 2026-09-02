@@ -52,8 +52,8 @@ async fn run() -> Result<(), Error> {
     let src = ScratchDir::new("roundtrip-check-fixture", args.keep_temporary_files)?;
     let out = ScratchDir::new("roundtrip-check-out", args.keep_temporary_files)?;
     if args.keep_temporary_files {
-        println!("fixture dir: {}", src.path().display());
-        println!("output dir:  {}", out.path().display());
+        println!("Fixture dir: {}", src.path().display());
+        println!("Output dir:  {}", out.path().display());
     }
 
     build_fixture(src.path())?;
@@ -88,7 +88,7 @@ async fn run() -> Result<(), Error> {
     let exe_out = out.path().join("run.sh");
     assert_files_equal(&src.path().join("run.sh"), &exe_out)?;
     let mode = fs::metadata(&exe_out)
-        .context(|| "reading metadata for", &exe_out)?
+        .context(|| "Reading metadata for", &exe_out)?
         .permissions()
         .mode();
     assert!(
@@ -98,7 +98,7 @@ async fn run() -> Result<(), Error> {
     );
 
     let link_out = out.path().join("link-to-plain.txt");
-    let target = fs::read_link(&link_out).context(|| "reading symlink target for", &link_out)?;
+    let target = fs::read_link(&link_out).context(|| "Reading symlink target for", &link_out)?;
     assert_eq!(
         target,
         Path::new("plain.txt"),
@@ -124,27 +124,27 @@ async fn run() -> Result<(), Error> {
 /// resolution, `Tree.children` flattening, and `SymlinkNode` round-trip.
 fn build_fixture(dir: &Path) -> Result<(), Error> {
     let plain = dir.join("plain.txt");
-    fs::write(&plain, b"just a regular file").context(|| "writing", &plain)?;
+    fs::write(&plain, b"just a regular file").context(|| "Writing", &plain)?;
 
     let exe = dir.join("run.sh");
-    fs::write(&exe, b"#!/usr/bin/env sh\necho hi\n").context(|| "writing", &exe)?;
+    fs::write(&exe, b"#!/usr/bin/env sh\necho hi\n").context(|| "Writing", &exe)?;
     fs::set_permissions(&exe, fs::Permissions::from_mode(0o755))
-        .context(|| "setting permissions on", &exe)?;
+        .context(|| "Setting permissions on", &exe)?;
 
     let subdir = dir.join("subdir");
-    fs::create_dir(&subdir).context(|| "creating directory", &subdir)?;
+    fs::create_dir(&subdir).context(|| "Creating directory", &subdir)?;
     let nested = subdir.join("nested.txt");
-    fs::write(&nested, b"nested file content").context(|| "writing", &nested)?;
+    fs::write(&nested, b"nested file content").context(|| "Writing", &nested)?;
 
     let link = dir.join("link-to-plain.txt");
-    symlink("plain.txt", &link).context(|| "creating symlink to plain.txt at", &link)?;
+    symlink("plain.txt", &link).context(|| "Creating symlink to plain.txt at", &link)?;
 
     Ok(())
 }
 
 fn assert_files_equal(expected: &Path, actual: &Path) -> Result<(), Error> {
-    let expected_content = fs::read(expected).context(|| "reading", expected)?;
-    let actual_content = fs::read(actual).context(|| "reading", actual)?;
+    let expected_content = fs::read(expected).context(|| "Reading", expected)?;
+    let actual_content = fs::read(actual).context(|| "Reading", actual)?;
     assert_eq!(
         expected_content,
         actual_content,

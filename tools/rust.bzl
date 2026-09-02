@@ -1,7 +1,7 @@
 """Thin wrappers around third-party rust_* rules that bake in this repo's
 own defaults, so they live in one place instead of being repeated at every
 call site. Only a linux_amd64 rust toolchain is registered so far (see
-//MODULE.bazel) — cross-compiling for other CI matrix platforms is a
+//:MODULE.bazel) — cross-compiling for other CI matrix platforms is a
 deferred, separate step.
 """
 
