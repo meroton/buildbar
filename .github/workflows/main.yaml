@@ -51,7 +51,7 @@
                   "path": "bb_slow_generic_runner.linux_amd64"
                }
             },
-            # re-memoize and re_dispatch are Rust binaries with only a
+            # re-memoize and re-dispatch are Rust binaries with only a
             # linux_amd64 rust toolchain registered (see //:MODULE.bazel) —
             # unlike the Go binaries above, they aren't built for every
             # other platform below, only this one leg.
@@ -71,16 +71,16 @@
             },
             {
                "if": "matrix.host.upload",
-               "name": "linux_amd64: copy re_dispatch",
-               "run": "rm -f re_dispatch.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_dispatch:re_dispatch $(pwd)/re_dispatch.linux_amd64"
+               "name": "linux_amd64: copy re-dispatch",
+               "run": "rm -f re-dispatch.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_dispatch:re-dispatch $(pwd)/re-dispatch.linux_amd64"
             },
             {
                "if": "matrix.host.upload",
-               "name": "linux_amd64: upload re_dispatch",
+               "name": "linux_amd64: upload re-dispatch",
                "uses": "actions/upload-artifact@v4",
                "with": {
-                  "name": "re_dispatch.linux_amd64",
-                  "path": "re_dispatch.linux_amd64"
+                  "name": "re-dispatch.linux_amd64",
+                  "path": "re-dispatch.linux_amd64"
                }
             },
             {
