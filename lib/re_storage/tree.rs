@@ -3,14 +3,15 @@
 //! difference stick.
 //!
 //! - **The root `Directory` digest** (`build_directory(path)?.digest`,
-//!   printed by the `digest`/`upload` CLI commands) is the digest of just
-//!   one `Directory` proto: the top-level names, file/subdirectory digests,
-//!   and symlinks directly inside `path`. Every subdirectory has its own,
-//!   separate `Directory` digest, addressed independently in CAS. This is
-//!   what REAPI's `Action.input_root_digest` and
-//!   `OutputDirectory.root_directory_digest` mean by "a directory digest" —
-//!   it's the standard, portable REAPI concept, and what `run
-//!   --directory-digest` consumes directly with no extra lookup.
+//!   printed by `re-memoize digest` and `re-directory upload`) is the
+//!   digest of just one `Directory` proto: the top-level names,
+//!   file/subdirectory digests, and symlinks directly inside `path`. Every
+//!   subdirectory has its own, separate `Directory` digest, addressed
+//!   independently in CAS. This is what REAPI's `Action.input_root_digest`
+//!   and `OutputDirectory.root_directory_digest` mean by "a directory
+//!   digest" — it's the standard, portable REAPI concept, and what
+//!   `re-memoize run --directory-digest` consumes directly with no extra
+//!   lookup.
 //!
 //! - **The `Tree` digest** (`tree_digest(path)`, or the `tree_digest` half
 //!   of [`upload::UploadedTree`](crate::upload::UploadedTree)) is the
@@ -28,8 +29,8 @@
 //! given a root `Directory` digest, [`download::download_from_root`]
 //! breadth-first-walks individual `Directory` blobs (round trips scale with
 //! tree depth); given a `Tree` digest, [`download::download_tree`] fetches
-//! the one flattened blob directly. `re-memoize download` exposes both as
-//! `--directory-digest`/`--tree-digest` for exactly this reason — use
+//! the one flattened blob directly. `re-directory download` exposes both
+//! as `--directory-digest`/`--tree-digest` for exactly this reason — use
 //! whichever one you already have.
 //!
 //! [`download::download_from_root`]: crate::download::download_from_root
@@ -51,7 +52,7 @@ use crate::error::{Error, IoResultExt};
 /// `digest`/`upload` commands.
 ///
 /// ```
-/// use re_memoize::tree::parse_digest;
+/// use re_storage::tree::parse_digest;
 ///
 /// let digest = parse_digest(
 ///     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/0",
@@ -81,7 +82,7 @@ pub fn parse_digest(s: &str) -> Result<Digest, Error> {
 /// [`parse_digest`].
 ///
 /// ```
-/// use re_memoize::tree::format_digest;
+/// use re_storage::tree::format_digest;
 /// use reapi::digest;
 ///
 /// let digest = digest(b"hello");
@@ -107,10 +108,10 @@ pub struct BuiltDirectory {
 /// there.
 ///
 /// ```
-/// use re_memoize::tree::build_directory;
+/// use re_storage::tree::build_directory;
 /// use std::fs;
 ///
-/// let dir = tempfile::Builder::new().prefix("re-memoize-doctest-build_directory-").tempdir().unwrap();
+/// let dir = tempfile::Builder::new().prefix("re-storage-doctest-build_directory-").tempdir().unwrap();
 /// fs::write(dir.path().join("hello.txt"), b"hello").unwrap();
 ///
 /// let built = build_directory(dir.path()).unwrap();
@@ -222,10 +223,10 @@ pub fn build_directory(path: &Path) -> Result<BuiltDirectory, Error> {
 /// `client.rs`).
 ///
 /// ```
-/// use re_memoize::tree::build_filtered_directory;
+/// use re_storage::tree::build_filtered_directory;
 /// use std::fs;
 ///
-/// let dir = tempfile::Builder::new().prefix("re-memoize-doctest-build_filtered_directory-").tempdir().unwrap();
+/// let dir = tempfile::Builder::new().prefix("re-storage-doctest-build_filtered_directory-").tempdir().unwrap();
 /// fs::create_dir_all(dir.path().join("a/b")).unwrap();
 /// fs::write(dir.path().join("a/b/c"), b"hello").unwrap();
 /// fs::write(dir.path().join("a/excluded"), b"not part of the filter").unwrap();
@@ -444,7 +445,7 @@ fn build_group(entries: &BTreeMap<String, FilterNode>) -> Result<BuiltDirectory,
 /// directory.
 ///
 /// ```
-/// use re_memoize::tree::reapi_path;
+/// use re_storage::tree::reapi_path;
 /// use std::path::Path;
 ///
 /// assert_eq!(reapi_path(Path::new("out/report.txt")).unwrap(), "out/report.txt");
@@ -470,9 +471,9 @@ pub fn reapi_path(path: &Path) -> Result<String, Error> {
 /// and digests that. Pure/offline — no network access.
 ///
 /// ```
-/// use re_memoize::tree::tree_digest;
+/// use re_storage::tree::tree_digest;
 ///
-/// let dir = tempfile::Builder::new().prefix("re-memoize-doctest-tree_digest-").tempdir().unwrap();
+/// let dir = tempfile::Builder::new().prefix("re-storage-doctest-tree_digest-").tempdir().unwrap();
 /// std::fs::write(dir.path().join("hello.txt"), b"hello").unwrap();
 ///
 /// let digest = tree_digest(dir.path()).unwrap();

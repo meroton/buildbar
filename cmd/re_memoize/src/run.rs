@@ -11,10 +11,12 @@ use reapi::Blob;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command as ChildCommand;
 
-use crate::client::RemoteClient;
-use crate::error::{Error, IoResultExt};
-use crate::tree::{format_digest, reapi_path};
-use crate::{download, upload};
+use re_storage::client::RemoteClient;
+use re_storage::error::IoResultExt;
+use re_storage::tree::{format_digest, reapi_path};
+use re_storage::{download, upload};
+
+use crate::error::Error;
 
 // TODO(platform): `Action.platform` (REAPI v2.2+; `Command.platform` is
 // deprecated) could be threaded through from a `--platform KEY=VALUE`
@@ -262,11 +264,11 @@ async fn capture_output_file(client: &mut RemoteClient, path: &Path) -> Result<O
     })
 }
 
-/// Captures `path` as an `OutputDirectory` by uploading it exactly like the
-/// primary `upload` command does (`upload::upload_directory`) — same
+/// Captures `path` as an `OutputDirectory` by uploading it exactly like
+/// `re-directory upload` does (`upload::upload_directory`) — same
 /// dedup-by-hash behavior, same two digests produced, just used for the
 /// `tree_digest`/`root_directory_digest` half instead of what
-/// `re-memoize upload` prints.
+/// `re-directory upload` prints.
 async fn capture_output_directory(
     client: &mut RemoteClient,
     path: &Path,
@@ -297,11 +299,11 @@ fn symlink_metadata(path: &Path) -> Result<fs::Metadata, Error> {
                 path: path.to_owned(),
             }
         } else {
-            Error::Io {
+            Error::Storage(re_storage::error::Error::Io {
                 action: "Reading metadata for".to_owned(),
                 path: path.to_owned(),
                 source,
-            }
+            })
         }
     })
 }
@@ -337,10 +339,12 @@ async fn restore_output_files(
         }
         let data = blobs
             .remove(&digest.hash)
-            .ok_or_else(|| Error::BlobStatus {
-                hash: digest.hash.clone(),
-                size_bytes: digest.size_bytes,
-                status: "server returned no response for this digest".to_owned(),
+            .ok_or_else(|| {
+                Error::Storage(re_storage::error::Error::BlobStatus {
+                    hash: digest.hash.clone(),
+                    size_bytes: digest.size_bytes,
+                    status: "server returned no response for this digest".to_owned(),
+                })
             })?;
         fs::write(&path, &data).context(|| "Writing", &path)?;
         let mode = match file.is_executable {

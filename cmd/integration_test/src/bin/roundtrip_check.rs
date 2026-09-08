@@ -8,19 +8,16 @@
 //! cargo run --bin roundtrip_check -- --remote http://localhost:8980
 //! ```
 
-#[path = "common/mod.rs"]
-mod common;
-
 use std::fs;
 use std::os::unix::fs::{PermissionsExt, symlink};
 use std::path::Path;
 
 use clap::Parser;
-use common::ScratchDir;
-use re_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
-use re_memoize::error::{Error, IoResultExt, report};
-use re_memoize::tree::build_directory;
-use re_memoize::{download, upload};
+use re_storage::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use re_storage::error::{Error, IoResultExt, report};
+use re_storage::tree::build_directory;
+use re_storage::{download, upload};
+use test_support::ScratchDir;
 
 #[derive(Parser)]
 struct Args {
@@ -49,8 +46,8 @@ async fn main() {
 async fn run() -> Result<(), Error> {
     let args = Args::parse();
 
-    let src = ScratchDir::new("roundtrip-check-fixture", args.keep_temporary_files)?;
-    let out = ScratchDir::new("roundtrip-check-out", args.keep_temporary_files)?;
+    let src = ScratchDir::new("re-directory", "roundtrip-check-fixture", args.keep_temporary_files)?;
+    let out = ScratchDir::new("re-directory", "roundtrip-check-out", args.keep_temporary_files)?;
     if args.keep_temporary_files {
         println!("Fixture dir: {}", src.path().display());
         println!("Output dir:  {}", out.path().display());

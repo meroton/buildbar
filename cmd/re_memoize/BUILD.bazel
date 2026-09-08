@@ -3,23 +3,19 @@ load("//tools:rust.bzl", "rust_binary", "rust_doc_test", "rust_library")
 rust_library(
     name = "re_memoize",
     srcs = [
-        "src/client.rs",
-        "src/download.rs",
         "src/error.rs",
         "src/lib.rs",
         "src/run.rs",
-        "src/tree.rs",
-        "src/upload.rs",
     ],
     edition = "2024",
+    visibility = ["//cmd/integration_test:__pkg__"],
     deps = [
+        "//lib/re_storage",
         "//lib/reapi",
         "@crates//:bazel-remote-apis",
         "@crates//:prost",
-        "@crates//:tempfile",
         "@crates//:thiserror",
         "@crates//:tokio",
-        "@crates//:tonic",
     ],
 )
 
@@ -35,41 +31,8 @@ rust_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":re_memoize",
+        "//lib/re_storage",
         "@crates//:clap",
-        "@crates//:tokio",
-    ],
-)
-
-# Manual E2E checks (not run by `bazel test`) — exercise `re_memoize` against
-# a real, already-running Buildbarn. See each file's module doc for usage.
-rust_binary(
-    name = "roundtrip_check",
-    srcs = [
-        "src/bin/common/mod.rs",
-        "src/bin/roundtrip_check.rs",
-    ],
-    crate_root = "src/bin/roundtrip_check.rs",
-    edition = "2024",
-    deps = [
-        ":re_memoize",
-        "@crates//:clap",
-        "@crates//:tempfile",
-        "@crates//:tokio",
-    ],
-)
-
-rust_binary(
-    name = "run_check",
-    srcs = [
-        "src/bin/common/mod.rs",
-        "src/bin/run_check.rs",
-    ],
-    crate_root = "src/bin/run_check.rs",
-    edition = "2024",
-    deps = [
-        ":re_memoize",
-        "@crates//:clap",
-        "@crates//:tempfile",
         "@crates//:tokio",
     ],
 )
