@@ -1,0 +1,36 @@
+load("//tools:rust.bzl", "rust_binary")
+
+"""
+Manual E2E checks (not run by `bazel test`) against a real,
+already-running Buildbarn — not released binaries either (see each
+file's module doc for usage), which is why they live here rather than
+under //cmd/re_memoize or //cmd/re_directory: this crate is neither a
+released program nor a `bazel test` target, just a third thing.
+
+NB: We must use a src/bin/ structure for Cargo to find the two binaries in this crate.
+"""
+
+rust_binary(
+    name = "run_check",
+    srcs = ["src/bin/run_check.rs"],
+    edition = "2024",
+    deps = [
+        "//cmd/re_memoize:re_memoize",
+        "//lib/re_storage",
+        "//lib/test_support",
+        "@crates//:clap",
+        "@crates//:tokio",
+    ],
+)
+
+rust_binary(
+    name = "roundtrip_check",
+    srcs = ["src/bin/roundtrip_check.rs"],
+    edition = "2024",
+    deps = [
+        "//lib/re_storage",
+        "//lib/test_support",
+        "@crates//:clap",
+        "@crates//:tokio",
+    ],
+)

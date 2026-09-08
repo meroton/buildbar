@@ -89,8 +89,9 @@ pub async fn download_from_root(
 /// restoring an `ActionResult`'s `output_directories`, whose `tree_digest`
 /// field is specified as a `Tree`-message digest per REAPI — see
 /// `tree.rs`'s module doc for the full Tree-vs-Directory distinction).
-/// Also exposed directly as `re-memoize download --tree-digest` for callers who
-/// already have a `Tree` digest in hand (e.g. printed by another tool).
+/// Also exposed directly as `re-directory download --tree-digest` for
+/// callers who already have a `Tree` digest in hand (e.g. printed by
+/// another tool).
 pub async fn download_tree(
     client: &mut RemoteClient,
     tree_digest: &Digest,
@@ -168,10 +169,10 @@ async fn write_files(
 /// use bazel_remote_apis::build::bazel::remote::execution::v2::{
 ///     Directory, DirectoryNode, FileNode, SymlinkNode,
 /// };
-/// use re_memoize::download::materialize;
+/// use re_storage::download::materialize;
 /// use reapi::{digest, digest_message};
 ///
-/// let out = tempfile::Builder::new().prefix("re-memoize-doctest-materialize-").tempdir().unwrap();
+/// let out = tempfile::Builder::new().prefix("re-storage-doctest-materialize-").tempdir().unwrap();
 ///
 /// let file_digest = digest(b"hello");
 /// let child = Directory {

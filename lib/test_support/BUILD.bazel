@@ -1,0 +1,15 @@
+load("//tools:rust.bzl", "rust_library")
+
+# Not for general use (see lib.rs's module doc) — visibility is scoped to
+# the one crate that needs it, rather than left public like the other
+# //lib libraries.
+rust_library(
+    name = "test_support",
+    srcs = ["lib.rs"],
+    edition = "2024",
+    visibility = ["//cmd/integration_test:__pkg__"],
+    deps = [
+        "//lib/re_storage",
+        "@crates//:tempfile",
+    ],
+)

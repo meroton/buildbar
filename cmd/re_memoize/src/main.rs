@@ -1,11 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use re_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
 use re_memoize::error::{Error, report};
 use re_memoize::run::{self, RunOptions, run_cached};
-use re_memoize::tree::{build_filtered_directory, format_digest, parse_digest};
-use re_memoize::{download, upload};
+use re_storage::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use re_storage::tree::{build_filtered_directory, format_digest, parse_digest};
 
 #[derive(Parser)]
 enum Command {
@@ -26,29 +25,6 @@ enum Command {
         #[arg(required = true)]
         filters: Vec<PathBuf>,
     },
-    /// Upload a directory to a remote CAS; prints its root Directory digest.
-    Upload {
-        path: PathBuf,
-        #[command(flatten)]
-        connection: ConnectionArgs,
-    },
-    /// Download a directory from a remote CAS. Two forms of the same
-    /// content are stored under two different digests (see `tree.rs`'s
-    /// module doc) — pass whichever one you have: `--directory-digest`
-    /// (what `digest`/`upload` print) walks the tree breadth-first,
-    /// `--tree-digest` fetches one self-describing blob directly.
-    #[command(group(clap::ArgGroup::new("digest").required(true).multiple(false)))]
-    Download {
-        /// The slower, general-purpose form: a root Directory digest.
-        #[arg(long, group = "digest")]
-        directory_digest: Option<String>,
-        /// The faster special case, If you already have the Tree digest.
-        #[arg(long, group = "digest")]
-        tree_digest: Option<String>,
-        out: PathBuf,
-        #[command(flatten)]
-        connection: ConnectionArgs,
-    },
     /// Run a command unless an identical (command, input tree) has already
     /// been cached in Buildbarn's ActionCache; either way, replay/produce
     /// its stdout, stderr, and exit code.
@@ -60,8 +36,8 @@ enum Command {
     /// REDIS databases and the like.
     Run {
         /// Root Directory digest of the command's inputs, as printed by
-        /// `digest`/`upload` — same digest form as `download
-        /// --directory-digest`.
+        /// `digest`/`re-directory upload` — same digest form as
+        /// `re-directory download --directory-digest`.
         #[arg(long)]
         directory_digest: String,
         /// Skip the cache lookup and the write-back afterward: always run,
@@ -147,44 +123,6 @@ async fn run() -> Result<(), Error> {
         Command::Digest { root, filters } => {
             let digest = build_filtered_directory(&root, &filters)?.digest;
             println!("{}", format_digest(&digest));
-        }
-        Command::Upload { path, connection } => {
-            let mut client = RemoteClient::connect(
-                &connection.remote,
-                connection.instance_name,
-                connection.ca_cert.as_deref(),
-            )
-            .await?
-            .with_max_message_size_bytes(connection.max_message_size_bytes);
-            let uploaded = upload::upload_directory(&mut client, &path).await?;
-            println!("{}", format_digest(&uploaded.root_digest));
-        }
-        Command::Download {
-            directory_digest,
-            tree_digest,
-            out,
-            connection,
-        } => {
-            let mut client = RemoteClient::connect(
-                &connection.remote,
-                connection.instance_name,
-                connection.ca_cert.as_deref(),
-            )
-            .await?
-            .with_max_message_size_bytes(connection.max_message_size_bytes);
-            match (directory_digest, tree_digest) {
-                (Some(digest), None) => {
-                    download::download_from_root(&mut client, &parse_digest(&digest)?, &out).await?
-                }
-                (None, Some(digest)) => {
-                    download::download_tree(&mut client, &parse_digest(&digest)?, &out).await?
-                }
-                (None, None) | (Some(_), Some(_)) => {
-                    unreachable!(
-                        "internal error: clap's ArgGroup requires exactly one of directory_digest/tree_digest"
-                    )
-                }
-            }
         }
         Command::Run {
             directory_digest,

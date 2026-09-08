@@ -1,0 +1,28 @@
+load("//tools:rust.bzl", "rust_doc_test", "rust_library")
+
+rust_library(
+    name = "re_storage",
+    srcs = [
+        "client.rs",
+        "download.rs",
+        "error.rs",
+        "lib.rs",
+        "tree.rs",
+        "upload.rs",
+    ],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/reapi",
+        "@crates//:bazel-remote-apis",
+        "@crates//:prost",
+        "@crates//:tempfile",
+        "@crates//:thiserror",
+        "@crates//:tonic",
+    ],
+)
+
+rust_doc_test(
+    name = "re_storage_doc_test",
+    crate = ":re_storage",
+)
