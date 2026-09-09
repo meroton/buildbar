@@ -8,7 +8,7 @@ use prost::Message;
 use reapi::digest_message;
 
 use crate::client::RemoteClient;
-use crate::error::{Error, IoResultExt};
+use crate::error::{DecodeResultExt, Error, IoResultExt};
 
 /// Fetches `root_digest` (a root `Directory` digest, as printed by
 /// `digest`/`upload`) and materializes the whole tree under `out_dir`.
@@ -38,12 +38,7 @@ pub async fn download_from_root(
             let bytes = blobs
                 .get(&digest.hash)
                 .ok_or_else(|| no_response_for(digest))?;
-            let dir = Directory::decode(&bytes[..]).map_err(|source| Error::Decode {
-                what: "Directory",
-                hash: digest.hash.clone(),
-                size_bytes: digest.size_bytes,
-                source,
-            })?;
+            let dir = Directory::decode(&bytes[..]).context("Directory", digest)?;
             fs::create_dir_all(target).context(|| "Creating directory", target)?;
 
             for entry in &dir.directories {
@@ -103,12 +98,7 @@ pub async fn download_tree(
     let tree_bytes = tree_blob
         .remove(&tree_digest.hash)
         .ok_or_else(|| no_response_for(tree_digest))?;
-    let tree = Tree::decode(&tree_bytes[..]).map_err(|source| Error::Decode {
-        what: "Tree",
-        hash: tree_digest.hash.clone(),
-        size_bytes: tree_digest.size_bytes,
-        source,
-    })?;
+    let tree = Tree::decode(&tree_bytes[..]).context("Tree", tree_digest)?;
 
     let mut lookup: HashMap<String, &Directory> = HashMap::new();
     for dir in &tree.children {

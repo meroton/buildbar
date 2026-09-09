@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use bazel_remote_apis::build::bazel::remote::execution::v2::Digest;
+
 /// Structured, matchable errors for this crate's REAPI CAS/ActionCache
 /// operations. Every fallible function here returns `Result<T, Error>`; no
 /// `anyhow` anywhere.
@@ -30,7 +32,16 @@ pub enum Error {
         #[source]
         source: tonic::Status,
     },
-    #[error("Decoding {what} blob (digest {hash}/{size_bytes})")]
+    /// This crate only ever decodes a `Directory` or `Tree` blob (see
+    /// `download.rs`), so a decode failure here is far more often a caller
+    /// passing the wrong digest kind (they're the same `<hash>/<size>`
+    /// shape, so nothing catches this earlier) than real corruption — the
+    /// message hints at that rather than just reporting the raw prost
+    /// error.
+    #[error(
+        "Decoding {what} blob (digest {hash}/{size_bytes}) -- Directory and Tree digests \
+         look identical but aren't interchangeable; check you passed the right kind"
+    )]
     Decode {
         what: &'static str,
         hash: String,
@@ -103,6 +114,27 @@ impl<T> IoResultExt<T> for std::io::Result<T> {
         self.map_err(|source| Error::Io {
             action: action().into(),
             path: path.to_owned(),
+            source,
+        })
+    }
+}
+
+/// Attaches an [`Error::Decode`] `what`/digest to a
+/// `Result<T, prost::DecodeError>` without losing the ability to
+/// `?`-chain it — mirrors [`IoResultExt`] above for `Error::Io`. `what` is
+/// always a `&'static str` literal at both call sites, so there's no
+/// eager-evaluation cost to defer with a closure the way `IoResultExt`
+/// does for `action`.
+pub trait DecodeResultExt<T> {
+    fn context(self, what: &'static str, digest: &Digest) -> Result<T, Error>;
+}
+
+impl<T> DecodeResultExt<T> for Result<T, prost::DecodeError> {
+    fn context(self, what: &'static str, digest: &Digest) -> Result<T, Error> {
+        self.map_err(|source| Error::Decode {
+            what,
+            hash: digest.hash.clone(),
+            size_bytes: digest.size_bytes,
             source,
         })
     }
