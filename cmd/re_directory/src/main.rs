@@ -9,8 +9,22 @@ use re_storage::{download, upload};
 #[derive(Parser)]
 enum Command {
     /// Upload a directory to a remote CAS; prints its root Directory digest.
+    /// `--root`/filters work exactly like `re-memoize digest`'s (see its
+    /// `--help`), so the digest this prints can also be reproduced offline,
+    /// and vice versa: whatever `re-memoize digest --root R filters...`
+    /// says the key would be is exactly what uploading with the same
+    /// `--root`/filters here actually pushes to CAS.
     Upload {
-        path: PathBuf,
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
+        /// Paths to include, read exactly as given (relative to the
+        /// working directory, so they tab-complete normally — not relative
+        /// to --root; --root only decides where each one lands in the
+        /// tree). Each independently a file, directory (included fully,
+        /// recursively), or symlink; must resolve to somewhere inside
+        /// --root. With none given, the whole --root directory is
+        /// uploaded.
+        filters: Vec<PathBuf>,
         #[command(flatten)]
         connection: ConnectionArgs,
     },
@@ -28,6 +42,7 @@ enum Command {
         /// The faster special case, if you already have the Tree digest.
         #[arg(long, group = "digest")]
         tree_digest: Option<String>,
+        /// Directory to materialize the downloaded tree into.
         out: PathBuf,
         #[command(flatten)]
         connection: ConnectionArgs,
@@ -63,13 +78,36 @@ struct ConnectionArgs {
 async fn main() {
     if let Err(err) = run().await {
         report(&err);
+        hint_wrong_flag(&err);
         std::process::exit(1);
     }
 }
 
+/// `re_storage::error::Error::Decode`'s own message can only say "this is
+/// the wrong digest kind" in general — it has no notion of `download`'s
+/// `--directory-digest`/`--tree-digest` flags, since those are this CLI's
+/// vocabulary, not the library's. But which flag leads to which decode is
+/// fixed and 1:1 (`download_from_root`, reached only via
+/// `--directory-digest`, always decodes `"Directory"`; `download_tree`,
+/// reached only via `--tree-digest`, always decodes `"Tree"`), so this CLI
+/// *can* name the other flag directly instead of leaving the reader to
+/// work out which is which.
+fn hint_wrong_flag(err: &Error) {
+    let try_instead = match err {
+        Error::Decode { what: "Directory", .. } => "--tree-digest",
+        Error::Decode { what: "Tree", .. } => "--directory-digest",
+        _ => return,
+    };
+    eprintln!("Hint: this looks like the wrong digest kind — try {try_instead} instead");
+}
+
 async fn run() -> Result<(), Error> {
     match Command::parse() {
-        Command::Upload { path, connection } => {
+        Command::Upload {
+            root,
+            filters,
+            connection,
+        } => {
             let mut client = RemoteClient::connect(
                 &connection.remote,
                 connection.instance_name,
@@ -77,7 +115,7 @@ async fn run() -> Result<(), Error> {
             )
             .await?
             .with_max_message_size_bytes(connection.max_message_size_bytes);
-            let uploaded = upload::upload_directory(&mut client, &path).await?;
+            let uploaded = upload::upload_filtered_directory(&mut client, &root, &filters).await?;
             println!("{}", format_digest(&uploaded.root_digest));
         }
         Command::Download {
