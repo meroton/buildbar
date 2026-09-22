@@ -1,9 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use re_memoize::error::{Error, report};
 use re_memoize::run::{self, RunOptions, run_cached};
 use re_storage::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use re_storage::error::IoResultExt;
 use re_storage::tree::{build_filtered_directory, format_digest, parse_digest};
 
 #[derive(Parser)]
@@ -119,6 +120,10 @@ async fn main() {
 }
 
 async fn run() -> Result<(), Error> {
+    if let Some(dir) = std::env::var_os("BUILD_WORKING_DIRECTORY") {
+        std::env::set_current_dir(&dir).context(|| "Changing directory to", Path::new(&dir))?;
+    }
+
     match Command::parse() {
         Command::Digest { root, filters } => {
             let digest = build_filtered_directory(&root, &filters)?.digest;
