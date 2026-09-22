@@ -1,8 +1,9 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use re_memoize::error::{Error, report};
-use re_memoize::run::{self, RunOptions, run_cached};
+use re_memoize::run::{self, ActionKey, LoadOutcome, RunOptions, load_cached, run_cached, store_result};
 use re_storage::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
 use re_storage::error::IoResultExt;
 use re_storage::tree::{TreeEntryKind, build_filtered_directory, format_digest, list_entries, parse_digest};
@@ -86,6 +87,62 @@ enum Command {
         output_files: Vec<PathBuf>,
         #[arg(long = "output-dir")]
         output_dirs: Vec<PathBuf>,
+        #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
+        argv: Vec<String>,
+    },
+    /// Check the ActionCache for a `run` with these arguments, without
+    /// running anything — the manual, split-apart half of `run` for a
+    /// caller who needs to batch/cluster command execution themselves
+    /// (e.g. onto a shared, expensive external resource) while still
+    /// caching each one individually: check every command ahead of time,
+    /// and only actually execute — then `store` — whichever ones come
+    /// back a miss.
+    ///
+    /// Takes the same `--directory-digest`/argv `run` would (they must
+    /// match exactly to compute the same digest) — but no
+    /// `--output-file`/`--output-dir`/`--no-cache`: declaring output
+    /// files isn't supported here, and there'd be nothing to load with
+    /// caching off.
+    ///
+    /// On a hit, behaves exactly like `run`'s cache-hit path — replays
+    /// stdout/stderr and exits with the cached exit code — and is
+    /// otherwise indistinguishable from having actually run the command.
+    /// On a miss, nothing is replayed and the process exits 125 (matching
+    /// `git bisect run`'s "untestable, skip this one" convention: a value
+    /// distinct from any exit code a real command is likely to produce,
+    /// though — like that convention — not airtight against a real
+    /// command that happens to also use 125).
+    Load {
+        #[arg(long)]
+        directory_digest: String,
+        #[command(flatten)]
+        connection: ConnectionArgs,
+        #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
+        argv: Vec<String>,
+    },
+    /// Persist an already-known result under the Action digest these
+    /// arguments would use — the other half of manual cache orchestration
+    /// (see `load`'s doc): after running a command yourself outside
+    /// `re-memoize` (e.g. as part of a batch on a shared external
+    /// resource), record its result so a later `load` for the same
+    /// digest/argv hits.
+    ///
+    /// As with `load`, no `--output-file`/`--output-dir`: only the
+    /// command's exit code and captured stdout/stderr are stored.
+    Store {
+        #[arg(long)]
+        directory_digest: String,
+        /// The exit code the command actually produced when you ran it.
+        #[arg(long = "exit-code")]
+        exit_code: i32,
+        /// File holding the command's captured stdout; omit for empty.
+        #[arg(long)]
+        stdout: Option<PathBuf>,
+        /// File holding the command's captured stderr; omit for empty.
+        #[arg(long)]
+        stderr: Option<PathBuf>,
+        #[command(flatten)]
+        connection: ConnectionArgs,
         #[arg(trailing_var_arg = true, required = true, allow_hyphen_values = true)]
         argv: Vec<String>,
     },
@@ -214,6 +271,61 @@ async fn run() -> Result<(), Error> {
                 no_cache: false,
             })?;
             println!("{}", format_digest(&digest));
+        }
+        Command::Load {
+            directory_digest,
+            connection,
+            argv,
+        } => {
+            let input_root_digest = parse_digest(&directory_digest)?;
+            let mut client = RemoteClient::connect(
+                &connection.remote,
+                connection.instance_name,
+                connection.ca_cert.as_deref(),
+            )
+            .await?
+            .with_max_message_size_bytes(connection.max_message_size_bytes);
+            let key = ActionKey {
+                input_root_digest,
+                argv,
+            };
+            match load_cached(&mut client, key).await? {
+                LoadOutcome::Hit { exit_code } => std::process::exit(exit_code),
+                LoadOutcome::Miss => {
+                    eprintln!("re-memoize: cache miss");
+                    std::process::exit(125);
+                }
+            }
+        }
+        Command::Store {
+            directory_digest,
+            exit_code,
+            stdout,
+            stderr,
+            connection,
+            argv,
+        } => {
+            let input_root_digest = parse_digest(&directory_digest)?;
+            let stdout = match stdout {
+                Some(path) => fs::read(&path).context(|| "Reading", &path)?,
+                None => Vec::new(),
+            };
+            let stderr = match stderr {
+                Some(path) => fs::read(&path).context(|| "Reading", &path)?,
+                None => Vec::new(),
+            };
+            let mut client = RemoteClient::connect(
+                &connection.remote,
+                connection.instance_name,
+                connection.ca_cert.as_deref(),
+            )
+            .await?
+            .with_max_message_size_bytes(connection.max_message_size_bytes);
+            let key = ActionKey {
+                input_root_digest,
+                argv,
+            };
+            store_result(&mut client, key, exit_code, stdout, stderr).await?;
         }
     }
     Ok(())
