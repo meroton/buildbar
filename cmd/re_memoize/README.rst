@@ -53,15 +53,46 @@ This can be computed with the ``digest`` subcommand.
     # An entire directory
     lookup_key="$( \
         re-memoize digest \
-        ./input_tarball/
+        cmd/re_memoize/
     )"
 
     # Parts of a directory with filters
     lookup_key="$( \
         re-memoize digest \
-        ./input_tarball/
+        cmd/re_memoize/{README.rst,src/}
     )"
 
+What files were hashed?
++++++++++++++++++++++++
+
+Use the ``--verbose`` flag to see the full tree listing:
+
+::
+
+    $ re-memoize digest cmd/re_memoize/{README.rst,src/} --verbose
+    dir	cmd/	b0bd319c90692765d75ea8d3dec142be67bf9a5375577af939ffeca6c30de10c/85
+    dir	cmd/re_memoize/	3866745db831911ee90ade2ae5ef2849c25b66ad82bdea9b0daf5b06f1fcccb0/163
+    dir	cmd/re_memoize/src/	9be05f377ccb250b464acc125bc2895118dc5654d9326bfb5e6a46aa4b320a9a/327
+    644	cmd/re_memoize/src/error.rs	718e1254093bbbc0955d07aeabe1160499a5d71c581a6c0160cf4158735a5d0c/3988
+    644	cmd/re_memoize/src/lib.rs	b2546734f9113a1f349fc0dfceff376ab7f4e979b03b7a6497ef60f03ed8391b/28
+    644	cmd/re_memoize/src/main.rs	34608df37483fcfe2321966d6f9c2caefe965c099f0a0a7559b4af087aaf9ac8/8910
+    644	cmd/re_memoize/src/run.rs	551a45be31aea4de20b468abe33c54010c15b6ef8ab8cea33a4dea212ebede95/17333
+    644	cmd/re_memoize/README.rst	8bb1a02f3029b569e5e3212947c96f72f76f534b4996cb3306c6fcc851cb90f6/7611
+    d72501479d463743c17a5d2fa1ca98098f0a7a222f3bf19488872fe202a0f587/77
+
+Notice how ``--root`` changes one directory layer but all files have the same hash.
+
+::
+
+    $ re-memoize digest --root cmd/ cmd/re_memoize/{README.rst,src/} --verbose
+    dir	re_memoize/	3866745db831911ee90ade2ae5ef2849c25b66ad82bdea9b0daf5b06f1fcccb0/163
+    dir	re_memoize/src/	9be05f377ccb250b464acc125bc2895118dc5654d9326bfb5e6a46aa4b320a9a/327
+    644	re_memoize/src/error.rs	718e1254093bbbc0955d07aeabe1160499a5d71c581a6c0160cf4158735a5d0c/3988
+    644	re_memoize/src/lib.rs	b2546734f9113a1f349fc0dfceff376ab7f4e979b03b7a6497ef60f03ed8391b/28
+    644	re_memoize/src/main.rs	34608df37483fcfe2321966d6f9c2caefe965c099f0a0a7559b4af087aaf9ac8/8910
+    644	re_memoize/src/run.rs	551a45be31aea4de20b468abe33c54010c15b6ef8ab8cea33a4dea212ebede95/17333
+    644	re_memoize/README.rst	8bb1a02f3029b569e5e3212947c96f72f76f534b4996cb3306c6fcc851cb90f6/7611
+    b0bd319c90692765d75ea8d3dec142be67bf9a5375577af939ffeca6c30de10c/85
 
 The command itself is cached as well
 ++++++++++++++++++++++++++++++++++++

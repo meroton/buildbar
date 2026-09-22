@@ -5,7 +5,7 @@ use re_memoize::error::{Error, report};
 use re_memoize::run::{self, RunOptions, run_cached};
 use re_storage::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
 use re_storage::error::IoResultExt;
-use re_storage::tree::{build_filtered_directory, format_digest, parse_digest};
+use re_storage::tree::{TreeEntryKind, build_filtered_directory, format_digest, list_entries, parse_digest};
 
 #[derive(Parser)]
 enum Command {
@@ -25,6 +25,14 @@ enum Command {
         /// --root. At least one is required.
         #[arg(required = true)]
         filters: Vec<PathBuf>,
+        /// Print every file, symlink, and directory the resulting digest
+        /// actually covers, each at its full path within the tree — so
+        /// you can verify --root/filters selected what you meant before
+        /// trusting the digest as a cache key. Written to stderr, so it
+        /// never interferes with capturing the digest itself, e.g.
+        /// `digest=$(re-memoize digest ...)`.
+        #[arg(long, short = 'v')]
+        verbose: bool,
     },
     /// Run a command unless an identical (command, input tree) has already
     /// been cached in Buildbarn's ActionCache; either way, replay/produce
@@ -107,6 +115,32 @@ struct ConnectionArgs {
     max_message_size_bytes: usize,
 }
 
+/// Prints every entry `built` contains, one per line, to stderr — never
+/// stdout, so `--verbose` can't interfere with capturing the digest
+/// itself (`digest=$(re-memoize digest ...)` only ever reads stdout).
+/// Tab-separated: kind (a file's mode, "dir", or "link"), path, and
+/// digest (files/directories) or symlink target.
+fn print_tree(built: &re_storage::tree::BuiltDirectory) {
+    for entry in list_entries(built) {
+        let path = entry.path.display();
+        match entry.kind {
+            TreeEntryKind::File {
+                digest,
+                is_executable,
+            } => {
+                let mode = if is_executable { "755" } else { "644" };
+                eprintln!("{mode}\t{path}\t{}", format_digest(&digest));
+            }
+            TreeEntryKind::Directory { digest } => {
+                eprintln!("dir\t{path}/\t{}", format_digest(&digest));
+            }
+            TreeEntryKind::Symlink { target } => {
+                eprintln!("link\t{path} -> {target}");
+            }
+        }
+    }
+}
+
 // A one-shot CLI, not a server: no work here benefits from true OS-thread
 // parallelism (see run.rs's `spawn_and_tee`, which concurrently pumps a
 // child's stdout/stderr via `try_join!` — that's task interleaving on one
@@ -125,9 +159,16 @@ async fn run() -> Result<(), Error> {
     }
 
     match Command::parse() {
-        Command::Digest { root, filters } => {
-            let digest = build_filtered_directory(&root, &filters)?.digest;
-            println!("{}", format_digest(&digest));
+        Command::Digest {
+            root,
+            filters,
+            verbose,
+        } => {
+            let built = build_filtered_directory(&root, &filters)?;
+            if verbose {
+                print_tree(&built);
+            }
+            println!("{}", format_digest(&built.digest));
         }
         Command::Run {
             directory_digest,
