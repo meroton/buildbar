@@ -132,19 +132,26 @@ pub fn action_digest(opts: &RunOptions) -> Result<Digest, Error> {
     Ok(action_blob.digest)
 }
 
+/// Builds `opts`'s `Command`/`Action` messages and uploads them — needed
+/// regardless of what happens next (a cache lookup, a fresh run, or a
+/// manual `store`): a consumer inspecting the ActionCache later must be
+/// able to resolve command_digest/action_digest either way. Shared head of
+/// `run_cached`, `load_cached`, and `store_result`.
+async fn ensure_action_uploaded(client: &mut RemoteClient, opts: &RunOptions) -> Result<Digest, Error> {
+    let (command_blob, action_blob) = build_action(opts)?;
+    let action_digest = action_blob.digest.clone();
+    client
+        .upload_if_missing(vec![command_blob, action_blob])
+        .await?;
+    Ok(action_digest)
+}
+
 /// Checks the ActionCache for `opts`'s `Action`, and either replays a prior
 /// result or actually runs `opts.argv` and records the outcome. Returns
 /// the child's exit code either way — a nonzero exit from the wrapped
 /// command is not itself a `re-memoize` failure.
 pub async fn run_cached(client: &mut RemoteClient, opts: RunOptions) -> Result<i32, Error> {
-    let (command_blob, action_blob) = build_action(&opts)?;
-    let action_digest = action_blob.digest.clone();
-
-    // Needed regardless of cache outcome: a consumer inspecting the
-    // ActionCache later must be able to resolve command_digest/action_digest.
-    client
-        .upload_if_missing(vec![command_blob, action_blob])
-        .await?;
+    let action_digest = ensure_action_uploaded(client, &opts).await?;
 
     if !opts.no_cache
         && let Some(cached) = client.action_result(&action_digest).await?
@@ -194,6 +201,113 @@ pub async fn run_cached(client: &mut RemoteClient, opts: RunOptions) -> Result<i
     }
 
     Ok(exit_code)
+}
+
+/// Identifies an Action for [`load_cached`]/[`store_result`]: an input
+/// tree and a command, with no declared output files/directories (manual
+/// cache orchestration doesn't capture or restore outputs — see
+/// [`load_cached`]'s doc) and caching always on (there'd be nothing to
+/// load or store otherwise, so unlike [`RunOptions`] there's no
+/// `no_cache` to set). Both functions build the same `RunOptions` shape
+/// from this internally, so a `store` and a later `load` for the same key
+/// always compute the same Action digest — see `action-digest`'s doc
+/// comment in `main.rs` for the same "arguments must match exactly"
+/// requirement applied here.
+pub struct ActionKey {
+    pub input_root_digest: Digest,
+    pub argv: Vec<String>,
+}
+
+impl ActionKey {
+    fn into_run_options(self) -> RunOptions {
+        RunOptions {
+            input_root_digest: self.input_root_digest,
+            argv: self.argv,
+            output_files: Vec::new(),
+            output_dirs: Vec::new(),
+            no_cache: false,
+        }
+    }
+}
+
+/// What [`load_cached`] found.
+pub enum LoadOutcome {
+    /// A cached result existed and was replayed (stdout/stderr written to
+    /// our own, exactly like `run_cached`'s cache-hit path) — carries its
+    /// exit code, exactly as `run_cached` would return it on a hit.
+    Hit { exit_code: i32 },
+    /// No cached result existed. Nothing was replayed.
+    Miss,
+}
+
+/// Checks the ActionCache for `key`, without running anything — the
+/// "before execution" half of `run_cached`, split out for manual cache
+/// orchestration (`re-memoize load`): a caller who needs to
+/// batch/cluster command execution themselves (e.g. onto a shared,
+/// expensive external resource) can check each command's cache status
+/// ahead of time, and only actually run — then [`store_result`] — the
+/// ones that come back `Miss`.
+///
+/// On a `Hit`, replays exactly like `run_cached` does: from the outside,
+/// indistinguishable from having actually run the command.
+pub async fn load_cached(client: &mut RemoteClient, key: ActionKey) -> Result<LoadOutcome, Error> {
+    let opts = key.into_run_options();
+    let action_digest = ensure_action_uploaded(client, &opts).await?;
+
+    match client.action_result(&action_digest).await? {
+        Some(cached) => {
+            eprintln!(
+                "re-memoize: cache hit ({}/{})",
+                action_digest.hash, action_digest.size_bytes
+            );
+            replay(client, &cached, &action_digest).await?;
+            Ok(LoadOutcome::Hit {
+                exit_code: cached.exit_code,
+            })
+        }
+        None => Ok(LoadOutcome::Miss),
+    }
+}
+
+/// Persists an already-known result under `key`'s Action digest — the
+/// "after execution" half of `run_cached`, for a caller who ran the
+/// command outside `re-memoize` entirely (see [`load_cached`]'s doc for
+/// why) and now wants a later [`load_cached`] for the same key to hit.
+/// `stdout`/`stderr` are the command's captured output, exactly as
+/// `run_cached` would have captured them itself — no output
+/// files/directories, matching [`ActionKey`]'s scope.
+pub async fn store_result(
+    client: &mut RemoteClient,
+    key: ActionKey,
+    exit_code: i32,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+) -> Result<(), Error> {
+    let opts = key.into_run_options();
+    let action_digest = ensure_action_uploaded(client, &opts).await?;
+
+    // Clients shouldn't populate stdout_raw/stderr_raw when writing to the
+    // cache (only servers inline on the read path) — always go through CAS.
+    let stdout_blob = Blob::new(stdout);
+    let stderr_blob = Blob::new(stderr);
+    let stdout_digest = stdout_blob.digest.clone();
+    let stderr_digest = stderr_blob.digest.clone();
+    client
+        .upload_if_missing(vec![stdout_blob, stderr_blob])
+        .await?;
+
+    let action_result = ActionResult {
+        exit_code,
+        stdout_digest: Some(stdout_digest),
+        stderr_digest: Some(stderr_digest),
+        output_files: Vec::new(),
+        output_directories: Vec::new(),
+        ..Default::default()
+    };
+    client
+        .update_action_result(&action_digest, action_result)
+        .await?;
+    Ok(())
 }
 
 /// Replays a cached result: writes stdout/stderr to our own, and restores
