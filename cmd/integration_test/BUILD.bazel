@@ -15,7 +15,7 @@ rust_binary(
     srcs = ["src/bin/run_check.rs"],
     edition = "2024",
     deps = [
-        "//cmd/re_memoize:re_memoize",
+        "//cmd/re_memoize:re_memoize_lib",
         "//lib/re_storage",
         "//lib/test_support",
         "@crates//:clap",

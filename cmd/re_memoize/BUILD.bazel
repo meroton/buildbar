@@ -1,7 +1,8 @@
 load("//tools:rust.bzl", "rust_binary", "rust_doc_test", "rust_library")
 
 rust_library(
-    name = "re_memoize",
+    name = "re_memoize_lib",
+    crate_name = "re_memoize",
     srcs = [
         "src/error.rs",
         "src/lib.rs",
@@ -21,7 +22,7 @@ rust_library(
 
 rust_doc_test(
     name = "re_memoize_doc_test",
-    crate = ":re_memoize",
+    crate = ":re_memoize_lib",
 )
 
 rust_binary(
@@ -30,7 +31,7 @@ rust_binary(
     edition = "2024",
     visibility = ["//visibility:public"],
     deps = [
-        ":re_memoize",
+        ":re_memoize_lib",
         "//lib/re_storage",
         "@crates//:clap",
         "@crates//:tokio",
