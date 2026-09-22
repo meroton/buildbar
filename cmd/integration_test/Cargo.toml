@@ -1,0 +1,11 @@
+[package]
+name = "integration_test"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
+re_memoize = { path = "../re_memoize", package = "re-memoize" }
+re_storage = { path = "../../lib/re_storage" }
+test_support = { path = "../../lib/test_support" }
+tokio = { version = "1.53.1", features = ["rt", "macros"] }

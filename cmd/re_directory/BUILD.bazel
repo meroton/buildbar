@@ -1,0 +1,13 @@
+load("//tools:rust.bzl", "rust_binary")
+
+rust_binary(
+    name = "re-directory",
+    srcs = ["src/main.rs"],
+    edition = "2024",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib/re_storage",
+        "@crates//:clap",
+        "@crates//:tokio",
+    ],
+)
