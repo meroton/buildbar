@@ -36,7 +36,7 @@
 //! [`download::download_from_root`]: crate::download::download_from_root
 //! [`download::download_tree`]: crate::download::download_tree
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -486,4 +486,106 @@ pub fn tree_digest(path: &Path) -> Result<Digest, Error> {
         children: built.descendants,
     };
     Ok(digest_message(&tree))
+}
+
+/// One entry in a built directory tree — a file, a symlink, or a
+/// subdirectory — at its full path relative to the tree's own root.
+/// Produced by [`list_entries`], for presenting everything a digest
+/// actually covers: e.g. to verify `--root`/filters selected the files
+/// you meant before trusting the digest as a cache key.
+pub enum TreeEntryKind {
+    File { digest: Digest, is_executable: bool },
+    Directory { digest: Digest },
+    Symlink { target: String },
+}
+
+/// See [`TreeEntryKind`].
+pub struct TreeEntry {
+    pub path: PathBuf,
+    pub kind: TreeEntryKind,
+}
+
+/// Recursively lists every file, symlink, and subdirectory in `built`,
+/// each at its full path relative to the tree's own root — the contents
+/// that actually produced `built.digest`.
+///
+/// Order follows a depth-first walk of `built.directory` and its
+/// `descendants`: at each level, every subdirectory (immediately followed
+/// by its own contents, before moving to the next sibling), then every
+/// file, then every symlink — the same three, already name-sorted lists
+/// `Directory` itself stores them in (see `build_directory`'s three
+/// `.sort_by` calls), not a single alphabetical merge across all three
+/// kinds.
+///
+/// ```
+/// use re_storage::tree::{TreeEntryKind, build_directory, list_entries};
+/// use std::fs;
+///
+/// let dir = tempfile::Builder::new().prefix("re-storage-doctest-list_entries-").tempdir().unwrap();
+/// fs::create_dir(dir.path().join("subdir")).unwrap();
+/// fs::write(dir.path().join("subdir/nested.txt"), b"hello").unwrap();
+/// fs::write(dir.path().join("top.txt"), b"world").unwrap();
+///
+/// let built = build_directory(dir.path()).unwrap();
+/// let entries = list_entries(&built);
+///
+/// let paths: Vec<_> = entries.iter().map(|e| e.path.to_str().unwrap()).collect();
+/// assert_eq!(paths, ["subdir", "subdir/nested.txt", "top.txt"]);
+/// assert!(matches!(entries[0].kind, TreeEntryKind::Directory { .. }));
+/// assert!(matches!(entries[1].kind, TreeEntryKind::File { .. }));
+/// ```
+pub fn list_entries(built: &BuiltDirectory) -> Vec<TreeEntry> {
+    let mut lookup: HashMap<String, &Directory> = HashMap::new();
+    for dir in &built.descendants {
+        lookup.insert(digest_message(dir).hash, dir);
+    }
+    let mut entries = Vec::new();
+    list_into(&built.directory, Path::new(""), &lookup, &mut entries);
+    entries
+}
+
+fn list_into(
+    dir: &Directory,
+    prefix: &Path,
+    lookup: &HashMap<String, &Directory>,
+    out: &mut Vec<TreeEntry>,
+) {
+    for entry in &dir.directories {
+        let path = prefix.join(&entry.name);
+        // Always Some: build_directory/build_group (this crate's only
+        // producers of a DirectoryNode) never leave it unset.
+        let digest = entry
+            .digest
+            .clone()
+            .expect("DirectoryNode built by this crate always carries a digest");
+        out.push(TreeEntry {
+            path: path.clone(),
+            kind: TreeEntryKind::Directory {
+                digest: digest.clone(),
+            },
+        });
+        if let Some(child) = lookup.get(&digest.hash) {
+            list_into(child, &path, lookup, out);
+        }
+    }
+    for file in &dir.files {
+        out.push(TreeEntry {
+            path: prefix.join(&file.name),
+            kind: TreeEntryKind::File {
+                digest: file
+                    .digest
+                    .clone()
+                    .expect("FileNode built by this crate always carries a digest"),
+                is_executable: file.is_executable,
+            },
+        });
+    }
+    for symlink in &dir.symlinks {
+        out.push(TreeEntry {
+            path: prefix.join(&symlink.name),
+            kind: TreeEntryKind::Symlink {
+                target: symlink.target.clone(),
+            },
+        });
+    }
 }
