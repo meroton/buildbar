@@ -46,14 +46,3 @@ image_push(
     # building all variants can be time-consuming.
     tags = ["manual"],
 )
-
-image_push(
-    name = "bb_completed_actions_ingester_container_push_meroton",
-    image = ":bb_completed_actions_ingester_container",
-    registry = "273354657929.dkr.ecr.eu-central-1.amazonaws.com",
-    repository = "meroton/buildbarn/bb-completed-actions-ingester",
-    tag_file = "@com_github_buildbarn_bb_storage//tools:stamped_tags",
-    # Don't build container image unless explicitly requested, as
-    # building all variants can be time-consuming.
-    tags = ["manual"],
-)
