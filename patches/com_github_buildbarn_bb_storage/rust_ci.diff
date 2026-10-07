@@ -1,0 +1,60 @@
+diff --git tools/github_workflows/workflows_template.libsonnet tools/github_workflows/workflows_template.libsonnet
+index 8dbacb3..d8e8409 100644
+--- tools/github_workflows/workflows_template.libsonnet
++++ tools/github_workflows/workflows_template.libsonnet
+@@ -84,7 +84,7 @@
+         [{
+           name: platform.name + ": build${{ matrix.host.platform_name == '%s' && ' and test' || '' }}" % std.get(platform, 'testPlatform', platform.name),
+           // Run tests only if we're not cross-compiling.
+-          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:%s //..." % [
++          run: "bazel ${{ matrix.host.platform_name == '%s' && 'test --test_output=errors --test_env=RUST_BACKTRACE=1' || 'build --@bazel_tools//tools/test:incompatible_use_default_test_toolchain=False' }} --platforms=@com_github_buildbarn_bb_storage//tools/platforms:%s //..." % [
+             std.get(platform, 'testPlatform', platform.name),
+             platform.name + if enableCgo then '_cgo' else '',
+           ],
+@@ -230,6 +230,46 @@
+         },
+       ],
+     },
++    lint_rust: {
++      'runs-on': 'ubuntu-latest',
++      name: 'lint_rust',
++      steps: [
++        {
++          name: 'Check out source code',
++          uses: 'actions/checkout@v1',
++        },
++        {
++          name: 'Install Rust toolchain',
++          run: 'rustup toolchain install',
++        },
++        // The fmt/clippy steps below don't reference this cache via any
++        // flag — cargo's caching is purely path-based (it always checks
++        // ~/.cargo/registry and target/ for existing state, no matter
++        // what). This step's only job is to restore those paths from a
++        // prior run before cargo runs, and to save them again afterward
++        // (via its own automatic post-step, baked into the action).
++        // Removing it doesn't break correctness, only silently slows
++        // down every run from here on.
++        {
++          name: 'Rust cache',
++          uses: 'Swatinem/rust-cache@v2',
++          with: {
++            workspaces: '.',
++          },
++        },
++        {
++          name: 'Rust: check formatting',
++          run: 'cargo fmt --all --check',
++        },
++        // TODO: convert to Bazel rust_clippy/rustfmt_test aspects once
++        // Rust lint checks are Bazel-driven like the Go ones above;
++        // plain cargo for now.
++        {
++          name: 'Rust: clippy',
++          run: 'cargo clippy --all-targets --locked -- -Dwarnings',
++        },
++      ],
++    },
+   },
+ 
+   getWorkflows(binaries, containers, setupSteps=[], extraSteps=[]): {
