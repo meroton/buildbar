@@ -1,87 +1,33 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-/// Structured, matchable errors for the whole crate. Every fallible lib
-/// function returns `Result<T, Error>`; no `anyhow` anywhere.
+/// Structured, matchable errors for `re-memoize`'s own caching/run
+/// pipeline. General REAPI CAS/ActionCache failures — connecting, RPCs,
+/// malformed server responses, filesystem I/O, invalid digests/paths —
+/// come from [`re_storage::error::Error`] and are wrapped transparently
+/// below; this enum only adds what's specific to `run`'s own
+/// action-building and output-capture/restore logic.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Any filesystem operation. `action` names what was being attempted
-    /// ("Reading", "Listing directory entries in", "Writing", ...) —
-    /// `std::io::Error` already carries *what* went wrong (`.kind()`), the
-    /// only thing missing is *where*, so that's the only thing added here.
-    #[error("{action} {path}")]
-    Io {
-        action: String,
-        path: PathBuf,
-        #[source]
-        source: std::io::Error,
-    },
-    /// Connecting to CAS, in every sense `reapi::connect` can fail:
-    /// transport errors, an unsupported endpoint scheme, or a bad CA
-    /// certificate. Transparent: `reapi::Error`'s own `Display` already
-    /// says exactly what went wrong, so this variant adds nothing of its
-    /// own on top.
+    /// Any general REAPI CAS/ActionCache failure — see
+    /// [`re_storage::error::Error`] for what these cover. Transparent: its
+    /// own `Display` already says exactly what went wrong.
     #[error(transparent)]
-    Connect(#[from] reapi::Error),
-    #[error("Calling {rpc} (instance {instance_name:?})")]
-    Rpc {
-        rpc: &'static str,
-        instance_name: String,
-        #[source]
-        source: tonic::Status,
-    },
-    #[error("Decoding {what} blob (digest {hash}/{size_bytes})")]
-    Decode {
-        what: &'static str,
-        hash: String,
-        size_bytes: i64,
-        #[source]
-        source: prost::DecodeError,
-    },
-    #[error("Blob {hash}/{size_bytes}: server reported {status}")]
-    BlobStatus {
-        hash: String,
-        size_bytes: i64,
-        status: String,
-    },
-    #[error("Invalid digest {input:?}: expected \"<hex-hash>/<size-bytes>\"")]
-    InvalidDigest { input: String },
-    /// The fetched `Tree` message is internally inconsistent (missing
-    /// root, or a `DirectoryNode` referencing a digest not present in
-    /// `Tree.children`) — a server protocol violation, not a decode
-    /// failure (the bytes parsed fine as a `Tree`, the *content* is
-    /// wrong), so distinct from `Decode`.
-    #[error("Malformed Tree (digest {hash}/{size_bytes}): {reason}")]
-    MalformedTree {
-        hash: String,
-        size_bytes: i64,
-        reason: &'static str,
-    },
-    /// A per-item response from a batch RPC (`BatchUpdateBlobs`,
-    /// `BatchReadBlobs`) omitted a field the request needs to make sense of
-    /// it (`digest` or `status`). Neither field's absence is documented as
-    /// meaning anything in particular by the spec, so treat it as an error
-    /// rather than defaulting — defaulting `status` in particular would
-    /// silently read as "OK" (`Status::default().code == 0`), which could
-    /// mask a real failure.
-    #[error("Malformed {rpc} response: {reason}")]
-    MalformedResponse {
-        rpc: &'static str,
-        reason: &'static str,
-    },
+    Storage(#[from] re_storage::error::Error),
     /// A declared `--output-file`/`--output-dir` didn't exist on disk after
     /// the command ran.
     #[error("Declared output {path:?} was not produced by the command")]
     MissingOutput { path: PathBuf },
     /// A declared output exists but isn't something `run` knows how to
-    /// capture yet (a symlink) — see `tree.rs`'s module-level rationale for
-    /// why this isn't handled: it's an unbuilt branch of an already-unbuilt
-    /// feature, not a hard problem in itself.
+    /// capture yet (a symlink) — see `tree.rs`'s module-level rationale in
+    /// `re_storage` for why this isn't handled: it's an unbuilt branch of
+    /// an already-unbuilt feature, not a hard problem in itself.
     #[error("Declared output {path:?}: {reason}")]
     UnsupportedOutput { path: PathBuf, reason: &'static str },
     /// A cached `ActionResult` is internally inconsistent (an `OutputFile`
     /// or `OutputDirectory` missing its digest) — a server/cache protocol
-    /// violation, mirroring `MalformedTree` above for the same reason: the
-    /// bytes decoded fine, the *content* doesn't hold up its own invariants.
+    /// violation, mirroring `re_storage::error::Error::MalformedTree` for
+    /// the same reason: the bytes decoded fine, the *content* doesn't hold
+    /// up its own invariants.
     #[error("Malformed ActionResult (action {action_digest}): {reason}")]
     MalformedActionResult {
         action_digest: String,
@@ -94,43 +40,6 @@ pub enum Error {
         #[source]
         source: std::io::Error,
     },
-    /// A path can't be represented as a REAPI path string (e.g. it's
-    /// absolute, where REAPI requires paths relative to the working
-    /// directory).
-    #[error("{path:?}: {reason}")]
-    InvalidPath { path: PathBuf, reason: &'static str },
-}
-
-/// Attaches an [`Error::Io`] action/path to a `std::io::Result` without
-/// losing the ability to `?`-chain it.
-///
-/// `action` is a closure, not a plain value: a bare argument (`.context("Reading", path)`,
-/// or worse `.context(format!("Creating symlink to {target} at"), path)`) would be
-/// evaluated by the caller *before* `context` is even entered — unconditionally,
-/// on the success path too. Taking `impl FnOnce() -> S` defers that to
-/// `map_err`'s closure, which only runs at all if `self` is `Err`, mirroring
-/// `anyhow`'s `.with_context(|| ...)` (as opposed to eager `.context(...)`).
-///
-/// ```
-/// use re_memoize::error::IoResultExt;
-/// use std::path::Path;
-///
-/// let path = Path::new("/does/not/exist");
-/// let err = std::fs::read(path).context(|| "Reading", path).unwrap_err();
-/// assert_eq!(err.to_string(), "Reading /does/not/exist");
-/// ```
-pub trait IoResultExt<T> {
-    fn context<S: Into<String>>(self, action: impl FnOnce() -> S, path: &Path) -> Result<T, Error>;
-}
-
-impl<T> IoResultExt<T> for std::io::Result<T> {
-    fn context<S: Into<String>>(self, action: impl FnOnce() -> S, path: &Path) -> Result<T, Error> {
-        self.map_err(|source| Error::Io {
-            action: action().into(),
-            path: path.to_owned(),
-            source,
-        })
-    }
 }
 
 /// Prints an error and its full `#[source]` chain to stderr, one level per
@@ -145,7 +54,7 @@ pub fn report(err: &Error) {
 /// line, e.g.:
 ///
 /// ```text
-/// Error: Reading /tmp/does-not-exist
+/// Error: Running "does-not-exist"
 /// Caused by: No such file or directory (os error 2)
 /// ```
 ///
@@ -158,12 +67,10 @@ pub fn report(err: &Error) {
 ///
 /// ```
 /// use re_memoize::error::{Error, write_report};
-/// use std::path::PathBuf;
 ///
 /// let source = std::io::Error::from_raw_os_error(2); // ENOENT
-/// let err = Error::Io {
-///     action: "Reading".to_owned(),
-///     path: PathBuf::from("/tmp/does-not-exist"),
+/// let err = Error::Spawn {
+///     program: "does-not-exist".to_owned(),
 ///     source,
 /// };
 ///
@@ -171,7 +78,7 @@ pub fn report(err: &Error) {
 /// write_report(&err, &mut out).unwrap();
 /// assert_eq!(
 ///     String::from_utf8(out).unwrap(),
-///     "Error: Reading /tmp/does-not-exist\nCaused by: No such file or directory (os error 2)\n",
+///     "Error: Running \"does-not-exist\"\nCaused by: No such file or directory (os error 2)\n",
 /// );
 /// ```
 pub fn write_report(err: &Error, mut out: impl std::io::Write) -> std::io::Result<()> {

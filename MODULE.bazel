@@ -183,10 +183,6 @@ use_repo(rust, "rust_toolchains")
 
 register_toolchains("@rust_toolchains//:all")
 
-# Vendors the cmd/re_memoize + cmd/re_dispatch + lib/reapi Cargo workspace's
-# dependencies as Bazel targets. `manifests` only needs the root workspace
-# Cargo.toml, not each member's — cargo_bazel resolves the full workspace
-# member graph from it, the same way `cargo metadata` would.
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 crate.from_cargo(
     name = "crates",

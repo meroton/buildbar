@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use bazel_remote_apis::build::bazel::remote::execution::v2::{Digest, Tree};
 use reapi::Blob;
 
 use crate::client::RemoteClient;
 use crate::error::Error;
-use crate::tree::build_directory;
+use crate::tree::{BuiltDirectory, build_directory, build_filtered_directory};
 
 /// The two digests that identify an uploaded directory tree: the root
 /// `Directory` digest (what REAPI's `Action.input_root_digest` and
@@ -28,7 +28,29 @@ pub async fn upload_directory(
     client: &mut RemoteClient,
     path: &Path,
 ) -> Result<UploadedTree, Error> {
-    let built = build_directory(path)?;
+    upload_built(client, build_directory(path)?).await
+}
+
+/// Same as [`upload_directory`], but rooted at `root` and limited to
+/// `filters` — mirrors `tree::build_filtered_directory`, so the digest an
+/// upload produces here can be reproduced offline by `re-memoize digest
+/// --root root filters...`, and vice versa. With no filters, identical to
+/// `upload_directory(client, root)`.
+pub async fn upload_filtered_directory(
+    client: &mut RemoteClient,
+    root: &Path,
+    filters: &[PathBuf],
+) -> Result<UploadedTree, Error> {
+    upload_built(client, build_filtered_directory(root, filters)?).await
+}
+
+/// Shared tail of both entry points above: given an already-built
+/// directory tree, push every blob it depends on that isn't already in
+/// CAS, and return both digests that identify it.
+async fn upload_built(
+    client: &mut RemoteClient,
+    built: BuiltDirectory,
+) -> Result<UploadedTree, Error> {
     let root_digest = built.digest.clone();
 
     let tree = Tree {

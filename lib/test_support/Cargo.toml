@@ -1,0 +1,11 @@
+[package]
+name = "test_support"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+re_storage = { path = "../re_storage" }
+tempfile = "3.27.0"

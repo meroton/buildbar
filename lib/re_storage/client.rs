@@ -13,13 +13,13 @@ use tonic::transport::Channel;
 
 use crate::error::Error;
 
-/// Default budget re-memoize stays under when sending a batched request
-/// (`BatchUpdateBlobs`/`BatchReadBlobs`/`FindMissingBlobs`): gRPC's common
-/// 4 MiB default max message size. This is a client-side sending budget,
-/// not a value read from the server — matches bb-storage's
+/// Default budget a `RemoteClient` stays under when sending a batched
+/// request (`BatchUpdateBlobs`/`BatchReadBlobs`/`FindMissingBlobs`): gRPC's
+/// common 4 MiB default max message size. This is a client-side sending
+/// budget, not a value read from the server — matches bb-storage's
 /// `maximum_received_message_size_bytes` in spirit (staying under some
 /// message-size ceiling), but that field is the receiver's hard limit;
-/// this is re-memoize's own choice of how hard to push against it.
+/// this is `re_storage`'s own choice of how hard to push against it.
 pub const DEFAULT_MAX_MESSAGE_SIZE_BYTES: usize = 4 * 1024 * 1024;
 
 /// A connection to a REAPI v2 Content Addressable Storage and ActionCache
@@ -54,8 +54,8 @@ impl RemoteClient {
         })
     }
 
-    /// Overrides the per-request message-size budget re-memoize sends under
-    /// (default [`DEFAULT_MAX_MESSAGE_SIZE_BYTES`]).
+    /// Overrides the per-request message-size budget this client sends
+    /// under (default [`DEFAULT_MAX_MESSAGE_SIZE_BYTES`]).
     #[must_use]
     pub fn with_max_message_size_bytes(mut self, max_message_size_bytes: usize) -> Self {
         self.max_message_size_bytes = max_message_size_bytes;
@@ -241,7 +241,7 @@ impl RemoteClient {
 /// size regardless of how many items make it up.
 ///
 /// ```
-/// use re_memoize::client::chunk_by_size;
+/// use re_storage::client::chunk_by_size;
 ///
 /// let batches = chunk_by_size(vec![1, 2, 3, 4], 5, |_| 2);
 /// assert_eq!(batches, vec![vec![1, 2], vec![3, 4]]);
@@ -290,7 +290,7 @@ pub fn chunk_by_size<T>(
 /// ```
 /// use bazel_remote_apis::build::bazel::remote::execution::v2::Digest;
 /// use bazel_remote_apis::google::rpc::Status;
-/// use re_memoize::client::check_blob_status;
+/// use re_storage::client::check_blob_status;
 ///
 /// let digest = Digest { hash: "abc".to_owned(), size_bytes: 3 };
 ///
