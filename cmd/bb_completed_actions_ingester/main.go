@@ -44,11 +44,13 @@ func main() {
 		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
 			grpcClientFactory,
 			int(configuration.MaximumMessageSizeBytes),
-			zstdPool)
+			zstdPool,
+		)
 		contentAddressableStorage, err := blobstore_configuration.NewBlobAccessFromConfiguration(
 			dependenciesGroup,
 			configuration.ContentAddressableStorage,
-			blobAccessCreator)
+			blobAccessCreator,
+		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create CAS")
 		}

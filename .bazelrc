@@ -8,3 +8,4 @@ test --test_output=errors
 
 common --@protobuf//bazel/toolchains:prefer_prebuilt_protoc
 common --protocopt=--fatal_warnings
+common --host_platform=@com_github_buildbarn_bb_storage//tools/platforms:host
