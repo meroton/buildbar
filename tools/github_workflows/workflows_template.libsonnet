@@ -228,6 +228,12 @@
           name: 'Golint',
           run: 'bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/...',
         },
+        // Builds only evaluate the module extensions they use, but `bazel mod`
+        // evaluates all of them, including broken ones in transitive modules.
+        {
+          name: 'Bazel module graph',
+          run: 'bazel mod graph > /dev/null',
+        },
       ],
     },
     lint_rust: {
