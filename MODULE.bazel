@@ -58,9 +58,29 @@ git_override(
     remote = "https://github.com/marcohu/rules_antlr.git",
 )
 
+# envoy_api (pulled in via grpc) still imports `com_google_googleapis_imports`
+# from googleapis' `switched_rules` extension, which is now a no-op stub that
+# generates no repositories. Only `bazel mod` evaluates it, and fails there.
+# Fixed upstream in envoy_api 0.0.0-20260130-84e8436 and later.
+single_version_override(
+    module_name = "envoy_api",
+    patches = ["//:patches/envoy_api/no-googleapis-imports.diff"],
+    version = "0.0.0-20251216-6ef568c",
+)
+
 single_version_override(
     module_name = "gazelle",
     patches = ["//:patches/gazelle/dont-flatten-srcs.diff"],
+)
+
+# protobuf's crate.from_specs() (for its own Rust runtime and tests) has no
+# `lockfile = ...`, which fails evaluation of the shared crate_universe
+# extension for non-root consumers, e.g. in `bazel mod graph`. We don't use
+# protobuf's Rust runtime, so mark the extension usage as dev-only.
+single_version_override(
+    module_name = "protobuf",
+    patches = ["//:patches/protobuf/crate-dev-dependency.diff"],
+    version = "35.0",
 )
 
 single_version_override(
