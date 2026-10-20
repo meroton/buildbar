@@ -407,6 +407,10 @@
             {
                "name": "Golint",
                "run": "bazel run @org_golang_x_lint//golint -- -set_exit_status $(pwd)/..."
+            },
+            {
+               "name": "Bazel module graph",
+               "run": "bazel mod graph > /dev/null"
             }
          ]
       },

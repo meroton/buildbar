@@ -39,10 +39,20 @@ local lintRustJob = {
   ],
 };
 
+// Builds only evaluate the module extensions they use, but `bazel mod`
+// evaluates all of them, including broken ones in transitive modules.
+local modGraphStep = {
+  name: 'Bazel module graph',
+  run: 'bazel mod graph > /dev/null',
+};
+
 {
   merge(workflows): std.mapWithKey(
     function(file, workflow) workflow {
       jobs+: {
+        lint+: {
+          steps+: [modGraphStep],
+        },
         lint_rust: lintRustJob,
       },
     },
