@@ -38,7 +38,6 @@ git_override(
     patch_cmds = [
         "sed -i '/tool = \":purgecss\",/a\\    use_default_shell_env = True,' pkg/otel/BUILD.bazel",
     ],
-    patches = ["//:patches/com_github_buildbarn_bb_storage/rust_ci.diff"],
     remote = "https://github.com/buildbarn/bb-storage.git",
 )
 
