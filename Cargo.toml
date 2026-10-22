@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["cmd/re_dispatch", "cmd/re_memoize", "lib/reapi"]
+members = ["cmd/integration_test", "cmd/re_directory", "cmd/re_dispatch", "cmd/re_memoize", "lib/reapi", "lib/re_storage", "lib/test_support"]

@@ -10,18 +10,16 @@
 //! cargo run --bin run_check -- --remote http://localhost:8980
 //! ```
 
-#[path = "common/mod.rs"]
-mod common;
-
 use std::fs;
 use std::path::PathBuf;
 
 use clap::Parser;
-use common::ScratchDir;
-use re_memoize::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
-use re_memoize::error::{Error, IoResultExt, report};
+use re_memoize::error::{Error, report};
 use re_memoize::run::{RunOptions, run_cached};
-use re_memoize::upload;
+use re_storage::client::{DEFAULT_MAX_MESSAGE_SIZE_BYTES, RemoteClient};
+use re_storage::error::IoResultExt;
+use re_storage::upload;
+use test_support::ScratchDir;
 
 #[derive(Parser)]
 struct Args {
@@ -50,8 +48,8 @@ async fn main() {
 async fn run() -> Result<(), Error> {
     let args = Args::parse();
 
-    let fixture = ScratchDir::new("run-check-fixture", args.keep_temporary_files)?;
-    let scratch = ScratchDir::new("run-check-scratch", args.keep_temporary_files)?;
+    let fixture = ScratchDir::new("re-memoize", "run-check-fixture", args.keep_temporary_files)?;
+    let scratch = ScratchDir::new("re-memoize", "run-check-scratch", args.keep_temporary_files)?;
     if args.keep_temporary_files {
         println!("Fixture dir: {}", fixture.path().display());
         println!("Scratch dir: {}", scratch.path().display());

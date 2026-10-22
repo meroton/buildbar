@@ -344,6 +344,20 @@
                }
             },
             {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: copy re-directory",
+               "run": "rm -f re-directory.linux_amd64 && bazel run --run_under cp --platforms=@com_github_buildbarn_bb_storage//tools/platforms:linux_amd64 //cmd/re_directory:re-directory $(pwd)/re-directory.linux_amd64"
+            },
+            {
+               "if": "matrix.host.upload",
+               "name": "linux_amd64: upload re-directory",
+               "uses": "actions/upload-artifact@v4",
+               "with": {
+                  "name": "re-directory.linux_amd64",
+                  "path": "re-directory.linux_amd64"
+               }
+            },
+            {
                "env": {
                   "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
                },
