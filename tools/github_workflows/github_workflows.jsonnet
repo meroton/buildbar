@@ -1,6 +1,7 @@
+local buildbar_workflows_template = import 'tools/github_workflows/buildbar_workflows_template.libsonnet';
 local workflows_template = import 'tools/github_workflows/workflows_template.libsonnet';
 
-workflows_template.getWorkflows(
+buildbar_workflows_template.merge(workflows_template.getWorkflows(
   [
     'bb_completed_actions_ingester',
     'bb_slow_generic_runner',
@@ -45,4 +46,4 @@ workflows_template.getWorkflows(
       },
     },
   ]
-)
+))
