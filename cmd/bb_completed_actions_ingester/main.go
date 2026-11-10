@@ -4,14 +4,15 @@ import (
 	"context"
 	"os"
 
+	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	cal_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/completedactionlogger"
 	blobstore_configuration "github.com/buildbarn/bb-storage/pkg/blobstore/configuration"
+	"github.com/buildbarn/bb-storage/pkg/cas"
 	"github.com/buildbarn/bb-storage/pkg/clock"
 	"github.com/buildbarn/bb-storage/pkg/global"
 	bb_grpc "github.com/buildbarn/bb-storage/pkg/grpc"
 	"github.com/buildbarn/bb-storage/pkg/program"
 	"github.com/buildbarn/bb-storage/pkg/util"
-	bb_zstd "github.com/buildbarn/bb-storage/pkg/zstd"
 	"github.com/meroton/buildbar/pkg/completedaction"
 	"github.com/meroton/buildbar/pkg/elasticsearch"
 	"github.com/meroton/buildbar/pkg/proto/configuration/bb_completed_actions_ingester"
@@ -38,18 +39,15 @@ func main() {
 			return util.StatusWrap(err, "Failed to apply global configuration options")
 		}
 
-		// Create a process-wide ZSTD compression pool.
-		zstdPool := bb_zstd.NewPoolFromConfiguration(configuration.ZstdPool)
-
-		blobAccessCreator := blobstore_configuration.NewCASBlobAccessCreator(
-			grpcClientFactory,
-			int(configuration.MaximumMessageSizeBytes),
-			zstdPool,
-		)
-		contentAddressableStorage, err := blobstore_configuration.NewBlobAccessFromConfiguration(
+		// Create the Content Addressable Storage (CAS). Since
+		// bb-storage introduced Content-Defined Chunking (CDC),
+		// the CAS is built on top of a Chunk Storage (CS) and
+		// Chunk Mapping Storage (CMS).
+		casInfo, err := blobstore_configuration.NewCASFromConfiguration(
 			dependenciesGroup,
 			configuration.ContentAddressableStorage,
-			blobAccessCreator,
+			grpcClientFactory,
+			int(configuration.MaximumMessageSizeBytes),
 		)
 		if err != nil {
 			return util.StatusWrap(err, "Failed to create CAS")
@@ -74,8 +72,14 @@ func main() {
 				util.DefaultErrorLogger,
 			),
 			completedaction.NewActionConverter(
-				contentAddressableStorage.BlobAccess,
-				int(configuration.MaximumMessageSizeBytes),
+				cas.NewMessageReader[remoteexecution.Action](
+					casInfo.ReadInfo,
+					int(configuration.MaximumMessageSizeBytes),
+				),
+				cas.NewMessageReader[remoteexecution.Command](
+					casInfo.ReadInfo,
+					int(configuration.MaximumMessageSizeBytes),
+				),
 			),
 		)
 

@@ -9,7 +9,7 @@ bazel_dep(name = "gazelle", version = "0.51.3")
 bazel_dep(name = "googleapis", version = "0.0.0-20260525-ef19b7b7")
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "protobuf", version = "35.0")
-bazel_dep(name = "rules_go", version = "0.63.0")
+bazel_dep(name = "rules_go", version = "0.64.2")
 bazel_dep(name = "rules_img", version = "0.3.11")
 bazel_dep(name = "rules_jsonnet", version = "0.7.2")
 bazel_dep(name = "rules_rust", version = "0.73.0")
@@ -17,20 +17,20 @@ bazel_dep(name = "toolchains_llvm", version = "1.7.0")
 
 git_override(
     module_name = "bazel_remote_apis",
-    commit = "becdd8f9ff811df88a22d3eadd6341753d51d167",
+    commit = "76ddd98e1f92c0e2e71d0d3aa6906eca31754c03",
     patches = ["//:patches/bazel_remote_apis/upstream-pr-378.diff"],
     remote = "https://github.com/bazelbuild/remote-apis.git",
 )
 
 git_override(
     module_name = "com_github_buildbarn_bb_remote_execution",
-    commit = "ea2a5febf0bad6bfd53a90ea1eafe962e876acaa",
+    commit = "6509b81e25be94ce2e07bda52455ec7144b5b6cb",
     remote = "https://github.com/buildbarn/bb-remote-execution.git",
 )
 
 git_override(
     module_name = "com_github_buildbarn_bb_storage",
-    commit = "0c18dd779b6bbe807e26baab183e0bf107307939",
+    commit = "04c4240170c1ab25e446c241ac0009f7ea54a824",
     # js_run_binary defaults to a scrubbed action env (no PATH at all), which
     # only works because glibc execvp falls back to a compiled-in /bin:/usr/bin --
     # paths that don't exist on NixOS. use_default_shell_env restores normal
@@ -43,7 +43,7 @@ git_override(
 
 git_override(
     module_name = "com_github_buildbarn_go_xdr",
-    commit = "236788cf9e8948a1e8875c7dd243e2be180cdfd7",
+    commit = "a2095890273efee7f8bb2b0007914f8b66398c57",
     remote = "https://github.com/buildbarn/go-xdr.git",
 )
 
@@ -168,10 +168,6 @@ go_deps_dev.module_override(
 go_deps_dev.module_override(
     patches = ["@com_github_buildbarn_bb_storage//:patches/org_golang_x_lint/generic.diff"],
     path = "golang.org/x/lint",
-)
-go_deps_dev.module_override(
-    patches = ["@com_github_buildbarn_bb_storage//:patches/org_golang_x_sys/o-search.diff"],
-    path = "golang.org/x/sys",
 )
 go_deps_dev.module_override(
     patches = ["@com_github_buildbarn_bb_storage//:patches/cc_mvdan_gofumpt/unused-receiver-idents.diff"],
