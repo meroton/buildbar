@@ -9,7 +9,6 @@ import (
 	cas_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/cas"
 	cal_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/completedactionlogger"
 	"github.com/buildbarn/bb-remote-execution/pkg/proto/resourceusage"
-	"github.com/buildbarn/bb-storage/pkg/blobstore/buffer"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/meroton/buildbar/internal/mock"
 	"github.com/meroton/buildbar/pkg/completedaction"
@@ -215,7 +214,8 @@ func exampleCommand(t *testing.T) *remoteexecution.Command {
 func TestFlattenCompletedActionFailsActionFetching(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	cas := mock.NewMockBlobAccess(ctrl)
+	actionReader := mock.NewMockReader[*remoteexecution.Action](ctrl)
+	commandReader := mock.NewMockReader[*remoteexecution.Command](ctrl)
 
 	completedAction := exampleCompletedAction(t)
 	action := exampleAction(t)
@@ -223,9 +223,9 @@ func TestFlattenCompletedActionFailsActionFetching(t *testing.T) {
 	commandDigest := digest.MustNewDigest("freebsd12", remoteexecution.DigestFunction_MD5, "492586011c3e1ac160fa0c524bd96091", 34)
 
 	t.Run("FlattenMissingActionInCAS", func(t *testing.T) {
-		cas.EXPECT().Get(ctx, actionDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		actionReader.EXPECT().Read(ctx, actionDigest).Return(nil, status.Error(codes.NotFound, "Object not found"))
 
-		document, err := completedaction.NewActionConverter(cas, 10240).
+		document, err := completedaction.NewActionConverter(actionReader, commandReader).
 			FlattenCompletedAction(ctx, completedAction)
 		require.Nil(t, err)
 		require.NotNil(t, document)
@@ -235,10 +235,10 @@ func TestFlattenCompletedActionFailsActionFetching(t *testing.T) {
 	})
 
 	t.Run("FlattenMissingCommandInCAS", func(t *testing.T) {
-		cas.EXPECT().Get(ctx, actionDigest).Return(buffer.NewProtoBufferFromProto(action, buffer.UserProvided))
-		cas.EXPECT().Get(ctx, commandDigest).Return(buffer.NewBufferFromError(status.Error(codes.NotFound, "Object not found")))
+		actionReader.EXPECT().Read(ctx, actionDigest).Return(action, nil)
+		commandReader.EXPECT().Read(ctx, commandDigest).Return(nil, status.Error(codes.NotFound, "Object not found"))
 
-		document, err := completedaction.NewActionConverter(cas, 10240).
+		document, err := completedaction.NewActionConverter(actionReader, commandReader).
 			FlattenCompletedAction(ctx, completedAction)
 		require.Nil(t, err)
 		require.NotNil(t, document)
@@ -251,7 +251,8 @@ func TestFlattenCompletedActionFailsActionFetching(t *testing.T) {
 func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 	ctrl, ctx := gomock.WithContext(context.Background(), t)
 
-	cas := mock.NewMockBlobAccess(ctrl)
+	actionReader := mock.NewMockReader[*remoteexecution.Action](ctrl)
+	commandReader := mock.NewMockReader[*remoteexecution.Command](ctrl)
 
 	completedAction := exampleCompletedAction(t)
 	action := exampleAction(t)
@@ -259,10 +260,10 @@ func TestFlattenCompletedActionSuccessfully(t *testing.T) {
 	actionDigest := digest.MustNewDigest("freebsd12", remoteexecution.DigestFunction_MD5, "8b1a9953c4611296a827abf8c47804d7", 11)
 	commandDigest := digest.MustNewDigest("freebsd12", remoteexecution.DigestFunction_MD5, "492586011c3e1ac160fa0c524bd96091", 34)
 
-	cas.EXPECT().Get(ctx, actionDigest).Return(buffer.NewProtoBufferFromProto(action, buffer.UserProvided))
-	cas.EXPECT().Get(ctx, commandDigest).Return(buffer.NewProtoBufferFromProto(command, buffer.UserProvided))
+	actionReader.EXPECT().Read(ctx, actionDigest).Return(action, nil)
+	commandReader.EXPECT().Read(ctx, commandDigest).Return(command, nil)
 
-	document, err := completedaction.NewActionConverter(cas, 10240).
+	document, err := completedaction.NewActionConverter(actionReader, commandReader).
 		FlattenCompletedAction(ctx, completedAction)
 	require.Nil(t, err)
 	require.NotNil(t, document)

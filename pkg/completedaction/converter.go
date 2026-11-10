@@ -10,7 +10,7 @@ import (
 	remoteexecution "github.com/bazelbuild/remote-apis/build/bazel/remote/execution/v2"
 	cal_proto "github.com/buildbarn/bb-remote-execution/pkg/proto/completedactionlogger"
 	"github.com/buildbarn/bb-remote-execution/pkg/proto/resourceusage"
-	"github.com/buildbarn/bb-storage/pkg/blobstore"
+	"github.com/buildbarn/bb-storage/pkg/cas/reader"
 	"github.com/buildbarn/bb-storage/pkg/digest"
 	"github.com/buildbarn/bb-storage/pkg/util"
 	"github.com/kballard/go-shellquote"
@@ -27,18 +27,18 @@ type ActionConverter interface { //nolint:all
 }
 
 type actionConverter struct {
-	contentAddressableStorage blobstore.BlobAccess
-	maximumMessageSizeBytes   int
+	actionReader  reader.Reader[*remoteexecution.Action]
+	commandReader reader.Reader[*remoteexecution.Command]
 }
 
 // NewActionConverter creates a new ActionConverter.
 func NewActionConverter(
-	contentAddressableStorage blobstore.BlobAccess,
-	maximumMessageSizeBytes int,
+	actionReader reader.Reader[*remoteexecution.Action],
+	commandReader reader.Reader[*remoteexecution.Command],
 ) ActionConverter {
 	return &actionConverter{
-		contentAddressableStorage: contentAddressableStorage,
-		maximumMessageSizeBytes:   maximumMessageSizeBytes,
+		actionReader:  actionReader,
+		commandReader: commandReader,
 	}
 }
 
@@ -275,26 +275,18 @@ func (cac *actionConverter) getAction(ctx context.Context, completedAction *cal_
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Invalid action digest")
 	}
-	actionMsg, err := cac.contentAddressableStorage.Get(ctx, actionDigest).ToProto(
-		&remoteexecution.Action{},
-		cac.maximumMessageSizeBytes,
-	)
+	action, err := cac.actionReader.Read(ctx, actionDigest)
 	if err != nil {
 		return nil, nil, util.StatusWrap(err, "Failed to get action")
 	}
-	action := actionMsg.(*remoteexecution.Action)
 
 	commandDigest, err := digestFunction.NewDigestFromProto(action.CommandDigest)
 	if err != nil {
 		return action, nil, util.StatusWrap(err, "Failed to get command")
 	}
-	commandMsg, err := cac.contentAddressableStorage.Get(ctx, commandDigest).ToProto(
-		&remoteexecution.Command{},
-		cac.maximumMessageSizeBytes,
-	)
+	command, err := cac.commandReader.Read(ctx, commandDigest)
 	if err != nil {
 		return action, nil, util.StatusWrap(err, "Failed to get command")
 	}
-	command := commandMsg.(*remoteexecution.Command)
 	return action, command, nil
 }
